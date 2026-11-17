@@ -6,6 +6,7 @@ Trading console.
     python -m src.console --port 8600          another port
     python -m src.console --reset-password U   set a new password for user U (and unlock it)
     python -m src.console --verify-audit       check the audit log's hash chain
+    python -m src.console --hash-password      print a hash for CONSOLE_ADMIN_PASSWORD_HASH (hosted deploys, see app.py)
 
 It runs beside the scanner (python -m src.main) and the movement service; it does not need them to be running and
 never places orders. Keep it on 127.0.0.1 unless it sits behind an HTTPS reverse proxy ([CONSOLE] in
@@ -45,7 +46,16 @@ def main(argv=None) -> int:
     ap.add_argument("--username", default="admin")
     ap.add_argument("--reset-password", metavar="USER")
     ap.add_argument("--verify-audit", action="store_true")
+    ap.add_argument("--hash-password", action="store_true",
+                    help="print a password hash for CONSOLE_ADMIN_PASSWORD_HASH (hosted deploys)")
     a = ap.parse_args(argv)
+    if a.hash_password:
+        ok, name = security.split_username(a.username)
+        if not sys.stdin.isatty():
+            print("Run this in an interactive terminal so you can type the password.")
+            return 2
+        print(security.hash_password(_ask_password(name)))
+        return 0
     settings.ensure_dirs()
     from src.utils.logging_config import setup_logging
     log = setup_logging()

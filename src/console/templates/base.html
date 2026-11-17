@@ -1,0 +1,76 @@
+{% from "_m.html" import badge with context %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Console{% endblock %} — Trading Console</title>
+<link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='console.css') }}">
+<script src="{{ url_for('static', filename='console.js') }}" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{% set ep = request.endpoint %}
+<div class="shell">
+  <aside class="side" id="side" aria-label="Main navigation">
+    <a class="brand" href="{{ url_for('overview') }}">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="1" y="1" width="28" height="28" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 20 L11 14 L15 17 L23 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 24h18" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/></svg>
+      <div><b>Trading Console</b><span>NIFTY and SENSEX options</span></div>
+    </a>
+    <ul class="nav">
+      {% macro item(endpoint, label, path) %}<li><a href="{{ url_for(endpoint) }}" {% if ep == endpoint %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ path }}"/></svg>{{ label }}</a></li>{% endmacro %}
+      {{ item('overview', 'Overview', 'M3 12l9-8 9 8M5 10v10h14V10') }}
+      {{ item('performance', 'Performance', 'M3 20h18M6 16l4-5 3 3 6-8') }}
+      {{ item('trades', 'Trade blotter', 'M4 6h16M4 12h16M4 18h10') }}
+      {{ item('paper', 'Paper trading', 'M6 3h9l4 4v14H6zM14 3v5h5') }}
+      {{ item('backtests', 'Backtests', 'M12 7v5l3 2M21 12a9 9 0 1 1-3-6.7M21 4v4h-4') }}
+      {{ item('ml_lab', 'ML lab', 'M5 19c3-6 5-10 7-10s4 4 7 10M4 19h16M9 5h6') }}
+      {{ item('assistant_page', 'AI assistant', 'M4 5h16v11H9l-5 4zM8 9h8M8 12h5') }}
+      <li class="nav-group">Control</li>
+      {{ item('risk', 'Risk & safety', 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z') }}
+      {{ item('broker', 'Broker monitor', 'M4 7h16v10H4zM8 21h8M12 17v4') }}
+      {{ item('health', 'System health', 'M3 12h4l3-7 4 14 3-7h4') }}
+      {{ item('audit_page', 'Audit log', 'M9 4h6l1 2h3v14H5V6h3zM9 12h6M9 16h4') }}
+      {{ item('reports_page', 'Reports', 'M12 4v11m0 0l-4-4m4 4l4-4M5 20h14') }}
+      {% if me and me.role == 'admin' %}
+      <li class="nav-group">Admin</li>
+      {{ item('credentials', 'Credentials', 'M8 11V8a4 4 0 0 1 8 0v3M6 11h12v9H6z') }}
+      {{ item('users', 'Users', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 20c0-3-2-5-5-5') }}
+      {% endif %}
+      <li class="nav-group">Help</li>
+      {{ item('docs', 'Documentation', 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5') }}
+      {{ item('faq', 'FAQ', 'M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7v.5M12 17h.01') }}
+      {{ item('disclosures', 'Risk disclosure', 'M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z') }}
+    </ul>
+    {% if me %}
+    <div class="side-foot">
+      <div><a href="{{ url_for('account') }}">{{ me.username }}</a> ({{ me.role }})</div>
+      <button class="btn btn-small" type="button" data-theme-toggle>Light / dark</button>
+      <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-small" type="submit">Sign out</button></form>
+    </div>
+    {% endif %}
+  </aside>
+  <div class="main">
+    {% if strip %}
+    <header class="strip" data-poll aria-label="System status">
+      <button class="btn btn-small menu-btn" type="button" aria-controls="side" aria-expanded="false">Menu</button>
+      <span class="item" data-k="engine"><span class="dot {{ 'ok' if strip.engine == 'running' else 'warn' if strip.engine == 'stale' else 'fail' }}"></span><span class="lbl">Scanner</span> <span class="v">{{ strip.engine }} ({{ strip.engine_age }})</span></span>
+      <span class="item hide-sm" data-k="session"><span class="dot {{ 'ok' if strip.market_open else '' }}"></span><span class="lbl">Market</span> <span class="v">{{ strip.session }}</span></span>
+      <span class="item"><span class="lbl">Orders</span> {% if strip.trading_mode == 'live' and strip.armed %}<span class="badge badge-live">Live orders</span>{% elif strip.trading_mode == 'off' %}<span class="badge badge-plain">Off</span>{% else %}<span class="badge badge-paper">Paper broker</span>{% endif %}</span>
+      <span class="item" data-k="live"><span class="dot {{ 'fail' if strip.armed else 'ok' }}"></span><span class="lbl">Live gate</span> <span class="v">{{ 'ARMED today' if strip.armed else 'not armed' }}</span></span>
+      <span class="item" data-k="kill"><span class="dot {{ 'fail' if strip.kill else 'ok' }}"></span><span class="lbl">Kill switch</span> <span class="v">{{ 'ENGAGED' if strip.kill else 'released' }}</span></span>
+      {% if strip.mock %}<span class="item"><span class="badge badge-danger">MOCK DATA</span></span>{% endif %}
+      <span class="spacer"></span>
+      <span class="item hide-sm"><span class="lbl">Broker</span> <span class="v">{{ {'ok': 'connected', None: 'not checked', 'no_token': 'no token', 'unauthorized': 'token rejected', 'network': 'unreachable'}.get(strip.broker, strip.broker) }}</span></span>
+    </header>
+    {% endif %}
+    <main class="content" id="main">
+      {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}
+      <ul class="flashes" role="status">{% for cat, msg in messages %}<li class="flash flash-{{ cat }}">{{ msg }}</li>{% endfor %}</ul>
+      {% endif %}{% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

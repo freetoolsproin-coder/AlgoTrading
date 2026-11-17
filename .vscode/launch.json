@@ -1,0 +1,154 @@
+{
+    // Run and Debug (Ctrl+Shift+D): pick a configuration, press F5.
+    // Every configuration runs a Python module from the project root with the project's .venv interpreter
+    // (selected in .vscode/settings.json). No batch files, no extra terminals, no browser windows.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Scanner (live)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.main",
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Scanner (mock data, no credentials)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.main",
+            "args": ["--mock"],
+            "cwd": "${workspaceFolder}",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Scanner: one cycle and exit",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.main",
+            "args": ["--once"],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Movement triggers (live, Flask :8503)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.movement",
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Movement triggers (mock data)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.movement",
+            "args": ["--mock"],
+            "cwd": "${workspaceFolder}",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Upstox login (daily token)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.broker.auth",
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Backtest NIFTY",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.backtest",
+            "args": ["--instrument", "NIFTY"],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Backtest SENSEX",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.backtest",
+            "args": ["--instrument", "SENSEX"],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Backtest v3 vs v1 (NIFTY, research report)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.backtest.v3_report",
+            "args": ["--instrument", "NIFTY"],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Live trading: status (changes nothing)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.execution.live_gate",
+            "args": ["--status"],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Live trading: ARM for today (asks for confirmation)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.execution.live_gate",
+            "args": ["--arm"],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Live trading: disarm",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.execution.live_gate",
+            "args": ["--disarm"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Train ML filter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.scanner.ml_filter",
+            "args": ["--train"],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {"PYTHONUTF8": "1"},
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": ["discover", "-s", "tests", "-t", ".", "-v"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}

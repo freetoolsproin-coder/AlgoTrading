@@ -1,0 +1,56 @@
+{% macro badge(source) -%}
+<span class="badge badge-{{ source }}">{{ SOURCE_LABEL[source] }}</span>
+{%- endmacro %}
+
+{% macro money(v, sign=false) -%}<span class="{{ v|pnl }}">{{ v|inr(0, sign) }}</span>{%- endmacro %}
+
+{% macro metric(label, value, sub='', cls='') -%}
+<div class="metric"><div class="l">{{ label }}</div><div class="v {{ cls }}">{{ value }}</div>{% if sub %}<div class="s">{{ sub }}</div>{% endif %}</div>
+{%- endmacro %}
+
+{% macro empty(title, text) -%}
+<div class="empty"><b>{{ title }}</b>{{ text }}</div>
+{%- endmacro %}
+
+{% macro metrics_grid(m) -%}
+<div class="metrics">
+  {{ metric("Net P&L (after charges)", m.net|inr(0, true), (m.return_pct|num(2) ~ "% of capital") if m.return_pct is not none else '', m.net|pnl) }}
+  {{ metric("Closed trades", m.trades, (m.wins ~ " won, " ~ m.losses ~ " lost") if m.trades else 'none yet') }}
+  {{ metric("Win rate", (m.win_rate|num(1) ~ "%") if m.win_rate is not none else "—") }}
+  {{ metric("Profit factor", m.profit_factor|num(2) if m.profit_factor is not none else "—", m.profit_factor_note) }}
+  {{ metric("Average trade", m.avg_trade|inr(0, true), '', m.avg_trade|pnl) }}
+  {{ metric("Average win", m.avg_win|inr, ("average loss " ~ m.avg_loss|inr ~ (", payoff " ~ m.payoff|num(2) if m.payoff else "")) if m.avg_loss is not none else '', 'pos' if m.avg_win else '') }}
+  {{ metric("Max drawdown", m.drawdown.amount|inr, (m.drawdown.pct|num(2) ~ "% from peak") if m.trades else '', 'neg' if m.drawdown.amount else '') }}
+  {{ metric("Longest losing run", m.losing_streak ~ " trades") }}
+  {{ metric("Gross P&L", m.gross|inr(0, true), '', m.gross|pnl) }}
+  {{ metric("Charges paid", m.charges|inr, (m.charges_pct_of_gross|num(1) ~ "% of gross") if m.charges_pct_of_gross is not none else '') }}
+  {{ metric("Slippage (est.)", m.slippage|inr if m.slippage is not none else "not measured", ("in " ~ m.slippage_trades ~ " trades' fill prices") if m.slippage is not none else '') }}
+  {{ metric("Sharpe / Sortino", (m.sharpe|num(2) ~ " / " ~ m.sortino|num(2)) if m.sharpe is not none else "—", m.ratio_note) }}
+  {{ metric("Daily VaR 95%", m.var95|inr if m.var95 is not none else "—", "historical, trade days" if m.var95 is not none else "needs 20+ days") }}
+  {{ metric("Worst day", m.worst_day|inr(0, true), ("best day " ~ m.best_day|inr(0, true)) if m.best_day is not none else '', m.worst_day|pnl) }}
+</div>
+{% if m.mean_ci %}<p class="note">95% bootstrap interval for the average trade: {{ m.mean_ci.low|inr(0, true) }} to {{ m.mean_ci.high|inr(0, true) }}{% if not m.mean_ci.excludes_zero %} — it includes zero, so the edge is not distinguishable from chance yet{% endif %}.</p>{% endif %}
+{% if m.sample_note %}<span class="sample">{{ m.sample_note }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro filters(endpoint, source, book, books, start, end, extra='', combined=false) -%}
+<form class="inline no-print" method="get" action="{{ url_for(endpoint) }}">
+  <input type="hidden" name="source" value="{{ source }}">
+  <div class="field"><label for="f-book">Book</label>
+    <select id="f-book" name="book">{% if source == 'live' %}<option value="">All books</option>{% else %}<option value="all" {% if combined or book == 'all' %}selected{% endif %}>All books combined (overlapping)</option>{% endif %}
+      {% for b in books %}<option value="{{ b.key }}" {% if b.key == book %}selected{% endif %}>{{ b.label }}</option>{% endfor %}
+    </select></div>
+  <div class="field"><label for="f-from">From</label><input id="f-from" type="date" name="from" value="{{ start }}"></div>
+  <div class="field"><label for="f-to">To</label><input id="f-to" type="date" name="to" value="{{ end }}"></div>
+  <button class="btn" type="submit">Apply</button>
+  {{ extra }}
+</form>
+{%- endmacro %}
+
+{% macro source_tabs(endpoint, current) -%}
+<nav class="tabs" aria-label="Data source">
+  {% for s in ['live', 'paper', 'backtest'] %}
+  <a href="{{ url_for(endpoint, source=s) }}" {% if s == current %}aria-current="page"{% endif %}><span class="badge badge-{{ s }}">{{ SOURCE_LABEL[s] }}</span></a>
+  {% endfor %}
+</nav>
+{%- endmacro %}

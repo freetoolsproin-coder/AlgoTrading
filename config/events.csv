@@ -1,0 +1,7 @@
+date,time,name,impact
+# Scheduled market events that block NEW entries (watches and alerts continue).
+# time = HH:MM IST: entries are blocked from 30 minutes before until 30 minutes after it.
+# Blank time = the whole day is blocked. Lines starting with # are ignored.
+# Example rows:
+# 2026-12-04,10:00,RBI monetary policy,high
+# 2027-02-01,,Union Budget,high

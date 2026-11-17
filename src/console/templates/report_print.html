@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, metrics_grid with context %}
+{% block title %}Performance report{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Performance report</h1>
+<p>{{ SOURCE_LABEL[source] }}, {{ book_label }}{% if start or end %}, {{ start or 'start' }} to {{ end or 'today' }}{% endif %}. Generated {{ generated|t }} by {{ me.username }}.</p></div>
+<button class="btn no-print" type="button" data-print>Print or save as PDF</button></div>
+<section class="panel rail rail-{{ source }}">{{ badge(source) }}<br><br>{{ metrics_grid(m) }}</section>
+<section class="panel ov-lower"><h2>Equity: cumulative net P&amp;L</h2><div class="chart" id="chart-equity" aria-label="Cumulative net P&amp;L"></div><div class="chart-tip"></div></section>
+<section class="panel ov-lower"><h2>Net P&amp;L by day</h2><div class="chart" id="chart-daily" aria-label="Daily net P&amp;L"></div></section>
+<script type="application/json" id="chart-data">{{ chart|tojson }}</script>
+<section class="panel ov-lower"><h2>By book</h2><div class="table-wrap"><table><thead><tr><th>Book</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Net</th><th class="n">Charges</th><th class="n">Profit factor</th><th class="n">Max DD</th></tr></thead><tbody>
+{% for r in by_book %}<tr><td>{{ r.key }}</td><td class="n">{{ r.trades }}</td><td class="n">{{ r.win_rate|num(1) }}%</td><td class="n">{{ money(r.net, true) }}</td><td class="n">{{ r.charges|inr }}</td><td class="n">{{ r.profit_factor|num(2) if r.profit_factor is not none else '—' }}</td><td class="n">{{ r.max_dd|inr }}</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="panel ov-lower"><h2>By month</h2><div class="table-wrap"><table><thead><tr><th>Month</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Net</th></tr></thead><tbody>
+{% for r in months %}<tr><td>{{ r.month }}</td><td class="n">{{ r.trades }}</td><td class="n">{{ r.win_rate|num(1) }}%</td><td class="n">{{ money(r.net, true) }}</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="panel ov-lower"><h2>Basis and limitations</h2>
+<ul>
+<li>Net P&amp;L is after brokerage, STT, exchange and SEBI fees, stamp duty and GST at the configured <code>[COSTS]</code> rates.</li>
+<li>Slippage is inside the fill prices; the slippage figure is an estimate of its size, not an extra deduction.</li>
+{% if source == 'backtest' %}<li>Backtest option prices are modelled (Black-Scholes, IV = India VIX); no historical option quotes, spreads or chains were used.</li>{% endif %}
+{% if source == 'paper' %}<li>Paper trades are simulated fills at live quotes; they exclude queue position, exchange partial fills and latency.</li>{% endif %}
+<li>Past results, simulated or real, do not guarantee future results. See the risk disclosure.</li>
+</ul></section>
+{% endblock %}

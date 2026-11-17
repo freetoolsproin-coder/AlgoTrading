@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Users</h1><p>Admins can change settings, credentials and users and run backtests. Viewers can read everything and use the two safety actions (engage kill switch, disarm live trading).</p></div></div>
+<section class="panel">
+<div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>2FA</th><th>Last sign-in</th><th>Risk disclosure</th><th>Actions</th></tr></thead><tbody>
+{% for u in users %}<tr><td>{{ u.username }}</td><td>{{ u.role }}</td><td>{{ 'disabled' if u.disabled else 'active' }}</td><td>{{ 'on' if u.has_2fa else 'off' }}</td><td>{{ u.last_login|t }}</td><td>{{ u.risk_ack|t if u.risk_ack else 'not yet' }}</td>
+<td>{% if u.username != me.username %}
+<form class="inline" method="post" action="{{ url_for('users') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="username" value="{{ u.username }}">
+{% if u.disabled %}<button class="btn btn-small" name="action" value="enable">Enable</button>{% else %}<button class="btn btn-small" name="action" value="disable">Disable</button>{% endif %}
+{% if u.role == 'viewer' %}<button class="btn btn-small" name="action" value="make_admin">Make admin</button>{% else %}<button class="btn btn-small" name="action" value="make_viewer">Make viewer</button>{% endif %}
+{% if u.has_2fa %}<button class="btn btn-small" name="action" value="reset_2fa">Reset 2FA</button>{% endif %}
+</form>{% else %}<span class="muted">you</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+</section>
+<section class="panel ov-lower"><h2>Add a user</h2>
+<form class="inline" method="post" action="{{ url_for('users') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="create">
+  <div class="field"><label for="nu">Username</label><input id="nu" name="username" required pattern="[A-Za-z0-9._-]{3,32}" autocomplete="off"></div>
+  <div class="field"><label for="np">Initial password</label><input id="np" name="password" type="password" minlength="12" required autocomplete="new-password"></div>
+  <div class="field"><label for="nr">Role</label><select id="nr" name="role"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div>
+  <button class="btn btn-primary" type="submit">Add user</button>
+</form>
+<p class="note">Forgotten passwords are reset on this computer: <code>python -m src.console --reset-password USER</code>.</p>
+</section>
+{% endblock %}

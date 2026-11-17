@@ -1,0 +1,31 @@
+{
+    // Terminal > Run Task. Each task runs in VS Code's own terminal panel (no external windows).
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Install / update dependencies",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": ["-m", "pip", "install", "-r", "requirements.txt"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        },
+        {
+            "label": "Run tests",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": ["-m", "unittest", "discover", "-s", "tests", "-t", "."],
+            "options": {"cwd": "${workspaceFolder}"},
+            "group": {"kind": "test", "isDefault": true},
+            "problemMatcher": []
+        },
+        {
+            "label": "Migrate old layout (dry run)",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": ["-m", "src.tools.migrate_layout"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        }
+    ]
+}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, empty with context %}
+{% block title %}Risk & safety{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Risk &amp; safety</h1><p>Limits from <code>config/scanner.ini</code>, today's usage per lane, and the two safety controls.</p></div></div>
+
+<div class="grid g2">
+  <section class="panel {{ 'callout-danger' if kill else '' }}">
+    <h2>Kill switch</h2>
+    {% if kill %}
+    <p><b>Engaged.</b> The scanner blocks new entries and squares off open paper positions at the bid (and every live position when live trading is armed) on its next cycle.</p>
+    {% if me.role == 'admin' %}
+    <form class="inline" method="post" action="{{ url_for('kill_switch') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="release">
+      <div class="field"><label for="ks-c">Type RELEASE to allow new entries again</label><input id="ks-c" name="confirm" autocomplete="off" required></div>
+      <button class="btn" type="submit">Release kill switch</button>
+    </form>
+    {% else %}<p class="muted">Only an admin can release it.</p>{% endif %}
+    {% else %}
+    <p>Released. Engaging it blocks new entries and squares off open positions within one scanner cycle. Anyone signed in can engage it.</p>
+    <form class="inline" method="post" action="{{ url_for('kill_switch') }}" data-confirm="Engage the kill switch? New entries stop and open positions are squared off.">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="engage">
+      <div class="field"><label for="ks-r">Reason (for the audit log)</label><input id="ks-r" name="reason" maxlength="200"></div>
+      <button class="btn btn-danger" type="submit">Engage kill switch</button>
+    </form>
+    {% endif %}
+    <p class="note">File: <code class="wrap-any">{{ kill_file }}</code>. Creating or deleting it by hand works too.</p>
+  </section>
+
+  <section class="panel {{ 'callout-danger' if gate.armed else '' }}">
+    <h2>Live trading gate</h2>
+    {% if gate.armed %}
+    <p><b>Armed for today.</b> Lane {{ gate.lane }} can place real Upstox orders, at most {{ gate.max_live_lots }} lot per position.</p>
+    <form method="post" action="{{ url_for('disarm') }}" data-confirm="Disarm live trading for today?">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-danger" type="submit">Disarm live trading now</button></form>
+    {% else %}
+    <p><b>Not armed.</b> No real orders can be placed. Every one of these is needed first:</p>
+    <ul>{% for m in gate.missing %}<li>{{ m }}</li>{% endfor %}</ul>
+    <p class="note">Arming is deliberately not available in the browser. It is a terminal step with pre-flight checks and a typed confirmation: <code>python -m src.execution.live_gate --arm</code>. See <a href="{{ url_for('docs', page='live-trading') }}">live trading safeguards</a>.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel rail rail-paper ov-lower">
+  <h2>Today's usage</h2>
+  {% if lanes %}
+  <div class="grid g3">
+  {% for l in lanes %}
+  <div><h3>Scanner {{ l.lane }} {% if l.r.halted %}<span class="badge badge-danger">halted</span>{% endif %}</h3>
+    <div class="usage">
+    {% for b in l.bars %}
+      <div class="usage-row"><span>{{ b.label }}</span><div class="track"><div class="fill" data-v="{{ b.value }}" data-limit="{{ b.limit }}"></div></div>
+      <span class="muted">{{ (b.value|inr) if b.fmt == 'inr' else b.value }} / {{ (b.limit|inr) if b.fmt == 'inr' else b.limit }}</span></div>
+    {% endfor %}
+    </div>
+    <p class="note">Week realised {{ money(l.r.week_realised, true) }}, losing run {{ l.r.consecutive_losses }}{% if l.r.halt_reason %}, {{ l.r.halt_reason }}{% endif %}.</p>
+  </div>
+  {% endfor %}
+  </div>
+  {% else %}{{ empty("No live risk state", "The scanner publishes its risk state every cycle (python -m src.main).") }}{% endif %}
+</section>
+
+<div class="grid g2 ov-lower">
+<section class="panel"><h2>Configured limits</h2>
+  <div class="table-wrap"><table><thead><tr><th>Limit</th><th class="n">Value</th><th>Setting</th></tr></thead><tbody>
+  {% for name, value, key in limits %}<tr><td>{{ name }}</td><td class="n">{{ value }}</td><td><code>{{ key }}</code></td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="note">Sizing is floor(risk budget / risk per lot) whole lots, then only reduced to fit these limits. No martingale, no averaging down, no size increase after a loss.</p>
+</section>
+<section class="panel"><h2>Charges applied to every leg</h2>
+  <div class="table-wrap"><table><tbody>
+    <tr><td>Brokerage</td><td class="n">{{ costs.brokerage_per_order|inr(2) }} per order</td></tr>
+    <tr><td>STT (sell side)</td><td class="n">{{ costs.stt_sell_pct }}% of premium</td></tr>
+    <tr><td>Exchange (NSE / BSE)</td><td class="n">{{ costs.nse_txn_pct }}% / {{ costs.bse_txn_pct }}%</td></tr>
+    <tr><td>SEBI fee</td><td class="n">₹{{ costs.sebi_per_crore }} per crore</td></tr>
+    <tr><td>Stamp duty (buy side)</td><td class="n">{{ costs.stamp_buy_pct }}%</td></tr>
+    <tr><td>GST</td><td class="n">{{ costs.gst_pct }}% of brokerage + fees</td></tr>
+    <tr><td>Paper slippage</td><td class="n">{{ pb.slippage_pct }}% per leg</td></tr>
+  </tbody></table></div>
+  <p class="note">Rates come from <code>[COSTS]</code>. Check them against your broker's current contract notes; exchanges revise fees.</p>
+</section>
+</div>
+
+<section class="panel rail rail-paper ov-lower"><h2>Historical risk by paper book</h2>
+  {% if hist %}
+  <div class="table-wrap"><table><thead><tr><th>Book</th><th class="n">Trades</th><th class="n">Max DD</th><th class="n">Max DD %</th><th class="n">Worst trade</th><th class="n">Worst day</th><th class="n">Daily VaR 95%</th><th class="n">Losing run</th></tr></thead><tbody>
+  {% for h in hist %}{% set m = h.m %}<tr><td>{{ h.label }}</td><td class="n">{{ m.trades }}</td><td class="n">{{ m.drawdown.amount|inr }}</td><td class="n">{{ m.drawdown.pct|num(2) }}%</td><td class="n">{{ money(m.worst_trade, true) }}</td><td class="n">{{ money(m.worst_day, true) }}</td><td class="n">{{ m.var95|inr if m.var95 is not none else '—' }}</td><td class="n">{{ m.losing_streak }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="note">VaR needs 20+ trading days with trades; until then it shows a dash.</p>
+  {% else %}{{ empty("No paper history yet", "") }}{% endif %}
+</section>
+
+<section class="panel ov-lower"><h2>Event risk</h2>
+  <p>{{ events.note or ('Event filtering is active.' if events.active else 'No event information published.') }}</p>
+  {% if events.upcoming %}<ul>{% for e in events.upcoming %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <p class="note">Add RBI policy, budget and similar dates to <code>config/events.csv</code>; entries are blocked 30 minutes either side.</p>
+</section>
+{% endblock %}

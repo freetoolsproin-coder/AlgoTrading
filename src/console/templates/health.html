@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% from "_m.html" import empty with context %}
+{% block title %}System health{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>System health</h1><p>Checked {{ h.checked_at|t }}. Overall: <b class="status-{{ h.overall }}">{{ {'ok': 'all checks pass', 'warn': 'attention needed', 'fail': 'action required'}[h.overall] }}</b>.</p></div>
+<a class="btn" href="{{ url_for('health') }}">Check again</a></div>
+{% set groups = h.checks|groupby('group') %}
+<div class="grid g2">
+{% for grp, items in groups %}
+<section class="panel"><h2>{{ grp }}</h2>
+  <div class="table-wrap"><table><tbody>
+  {% for c in items %}<tr><td class="nowrap"><span class="dot {{ 'ok' if c.status == 'ok' else 'warn' if c.status == 'warn' else 'fail' if c.status == 'fail' else '' }}"></span> {{ c.name }}</td><td class="status-{{ c.status }}">{{ {'ok': 'OK', 'warn': 'Check', 'fail': 'Failing', 'unknown': 'Unknown'}[c.status] }}</td><td class="muted">{{ c.detail }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endfor %}
+</div>
+{% if h.process %}<p class="note">Host CPU {{ h.process.cpu_pct }}%, memory {{ h.process.mem_pct }}%, console process {{ h.process.console_rss_mb }} MB.</p>{% endif %}
+<section class="panel ov-lower"><h2>Recent warnings and errors in logs/scanner.log</h2>
+  {% if h.logs.recent %}
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Level</th><th>Component</th><th>Message</th></tr></thead><tbody>
+  {% for l in h.logs.recent %}<tr><td>{{ l.time }}</td><td class="status-{{ 'fail' if l.level in ('ERROR', 'CRITICAL') else 'warn' }}">{{ l.level }}</td><td>{{ l.logger }}</td><td class="wrap-any">{{ l.message }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% elif h.logs.exists %}{{ empty("No warnings or errors", "The latest log lines are clean.") }}
+  {% else %}{{ empty("No log file yet", "The scanner writes logs/scanner.log when it runs.") }}{% endif %}
+  <p class="note">Tokens and keys are masked before anything is written to the log.</p>
+</section>
+{% endblock %}

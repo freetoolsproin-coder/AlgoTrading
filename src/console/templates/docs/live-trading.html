@@ -1,0 +1,17 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<p>Real orders are possible only when all four conditions hold, checked every cycle:</p>
+<ol><li><code>[EXECUTION] mode = live</code> in <code>config/scanner.ini</code>.</li>
+<li><code>LIVE_TRADING_CONFIRM=I ACCEPT REAL-MONEY RISK</code> in <code>.env</code> (it cannot be stored in the console vault).</li>
+<li>Today's arm file, written by <code>python -m src.execution.live_gate --arm</code> after pre-flight checks and a typed <code>ARM &lt;date&gt;</code>. It expires at the end of the day.</li>
+<li>Not in mock mode.</li></ol>
+<h2>What protects a live position</h2>
+<ul><li>Pre-trade validation of data freshness, quote age, contract key and expiry, session time, margin, lot cap (<code>max_live_lots</code>), stop validity, position limits, duplicates, broker connectivity and the daily order count.</li>
+<li>Entries are LIMIT orders that are cancelled, never chased, if not filled in time. Exits re-price to the bid, then use MARKET with exchange protection.</li>
+<li>A protective stop order rests at the broker after each fill, so a stop exists even if this computer stops.</li>
+<li>Every order has an idempotency key and broker tag; a timeout never causes a duplicate.</li>
+<li>Broker positions are reconciled every <code>reconcile_seconds</code>; a mismatch blocks new live entries.</li></ul>
+<h2>From the console</h2>
+<p>You can see whether live trading is armed (status bar and Risk page), watch broker positions and fills (Broker monitor) and <b>disarm</b> immediately. Arming is not available in the browser by design.</p>
+<h2>Before arming</h2>
+<p>Paper trade for several weeks, compare lanes, read the backtest report, keep <code>max_live_lots = 1</code>, check the Upstox order endpoints against the current Upstox documentation, and confirm your broker's current requirements for retail algorithmic orders under SEBI's framework.</p>
+{% endblock %}

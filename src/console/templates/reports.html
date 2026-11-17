@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% from "_m.html" import badge with context %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Reports</h1><p>Exports of recorded data, as stored. Every download is written to the audit log.</p></div></div>
+<div class="grid g3">
+{% for s in ['live', 'paper', 'backtest'] %}
+<section class="panel rail rail-{{ s }}">
+  <div class="src-head">{{ badge(s) }}</div>
+  <form method="get" action="{{ url_for('report_trades', fmt='csv') }}">
+    <input type="hidden" name="source" value="{{ s }}">
+    <div class="field"><label for="r-{{ s }}">Book</label><select id="r-{{ s }}" name="book"><option value="">All books</option>{% for b in books[s] %}<option value="{{ b.key }}">{{ b.label }}</option>{% endfor %}</select></div>
+    <div class="grid g2 ov-lower"><div class="field"><label for="rf-{{ s }}">From</label><input id="rf-{{ s }}" type="date" name="from"></div><div class="field"><label for="rt-{{ s }}">To</label><input id="rt-{{ s }}" type="date" name="to"></div></div>
+    <p class="ov-lower"><button class="btn" type="submit">Trades CSV</button>
+    <button class="btn" type="submit" formaction="{{ url_for('report_trades', fmt='json') }}">JSON</button>
+    <button class="btn" type="submit" formaction="{{ url_for('report_performance') }}">Performance report</button></p>
+  </form>
+  {% if not books[s] %}<p class="note">No {{ s }} trades recorded yet; exports will contain headers only.</p>{% endif %}
+</section>
+{% endfor %}
+</div>
+<section class="panel ov-lower"><h2>Operational records</h2>
+<p><a class="btn" href="{{ url_for('report_orders') }}">Order journal CSV</a> {% if me.role == 'admin' %}<a class="btn" href="{{ url_for('report_audit') }}">Audit log CSV</a>{% endif %}</p>
+<p class="note">CSV files start with comment lines (#) describing the source, filters and time of export. Cells starting with = + - @ are prefixed with an apostrophe so spreadsheets do not run them as formulas.</p>
+</section>
+{% endblock %}

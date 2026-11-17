@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIFTY 50 Stock Options</title>
+<link rel="stylesheet" href="/static/stocks.css">
+</head>
+<body>
+<header>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <h1>NIFTY 50 Stock Options</h1><span id="status" class="pill">loading</span><span id="when" class="muted small"></span>
+  </div>
+  <div class="search"><input id="q" placeholder="Search a stock for its research report…" autocomplete="off"
+    aria-label="Search stock"><div class="suggest"></div></div>
+</header>
+<main>
+  <div class="tiles">
+    <div class="tile"><div class="k">Valid setups</div><div class="v" id="t-valid">–</div></div>
+    <div class="tile"><div class="k">Watching</div><div class="v" id="t-watch">–</div></div>
+    <div class="tile"><div class="k">No trade</div><div class="v" id="t-none">–</div></div>
+    <div class="tile"><div class="k">Paper trades today</div><div class="v" id="t-trades">–</div></div>
+    <div class="tile"><div class="k">Paper P&amp;L (net)</div><div class="v" id="t-pnl">–</div></div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button data-f="actionable" class="on">Valid + watch</button><button data-f="VALID">Valid only</button>
+    <button data-f="CE">CE</button><button data-f="PE">PE</button><button data-f="all">All 50</button>
+    <span class="muted small" style="margin-left:auto">Click a row for the checks · click a symbol for its report</span>
+  </div>
+  <div class="card"><table id="plans"><thead><tr>
+    <th>Stock</th><th class="n">LTP</th><th>Signal</th><th class="n">Score</th><th>Contract</th>
+    <th class="n">Buy at</th><th class="n">Stop-loss</th><th class="n">Target 1</th><th class="n">Target 2</th>
+    <th class="n">Spot SL / T1 / T2</th><th class="n">R:R</th><th class="n">Lot · capital</th><th class="n">Risk / lot</th><th>Why</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>Paper book (today)</h2>
+  <div class="card"><table id="book"><thead><tr>
+    <th>Contract</th><th>Opened</th><th class="n">Entry</th><th class="n">Stop</th><th class="n">T1</th><th class="n">T2</th>
+    <th class="n">LTP</th><th>Status</th><th class="n">P&amp;L</th><th>Events</th></tr></thead><tbody></tbody></table></div>
+
+  <p class="note">Plans use completed 15-minute bars. Stop-loss sits behind the latest swing / Supertrend (0.6–1.8 ATR);
+    targets are 1.5 R and 2.5 R pulled in before the nearest resistance or support, and a plan is VALID only when the
+    reward:risk still holds on the option premium after charges. Premium levels are delta-gamma estimates – the spot
+    levels are the primary trigger. Paper trading only; not investment advice.</p>
+</main>
+<script src="/static/search.js"></script>
+<script>
+setupSearch(document.getElementById("q"));
+let state = null, filter = "actionable", open = new Set();
+document.querySelectorAll("#filters button").forEach(b => b.onclick = () => {
+  filter = b.dataset.f; document.querySelectorAll("#filters button").forEach(x=>x.classList.toggle("on", x===b)); render();
+});
+function keep(p){
+  if(filter==="all") return true;
+  if(filter==="actionable") return p.status!=="NO_TRADE";
+  if(filter==="VALID") return p.status==="VALID";
+  return p.direction===filter && p.status!=="NO_TRADE";
+}
+function render(){
+  if(!state) return;
+  const st = document.getElementById("status");
+  st.textContent = state.mock ? "MOCK DATA" : state.status; st.className = "pill " + (state.mock ? "mock" : state.status==="live" ? "live" : "warn");
+  document.getElementById("when").textContent = state.generated_at ? "updated " + state.generated_at.slice(11,16) + (state.duration? ` · scan ${state.duration}s`:"") : "first scan running…";
+  document.getElementById("t-valid").textContent = state.counts.VALID ?? 0;
+  document.getElementById("t-watch").textContent = state.counts.WATCH ?? 0;
+  document.getElementById("t-none").textContent = state.counts.NO_TRADE ?? 0;
+  const book = state.book || {trades:[]};
+  document.getElementById("t-trades").textContent = `${book.trades.length} (${book.open} open)`;
+  const pnl = document.getElementById("t-pnl"); pnl.textContent = rs(book.pnl); pnl.className = "v " + cls(book.pnl);
+
+  const tb = document.querySelector("#plans tbody"); tb.replaceChildren();
+  const rows = state.plans.filter(keep);
+  if(!rows.length){ const tr=el("tr"); const td=el("td","empty", state.generated_at ? "Nothing matches this filter right now." : "Scanning the NIFTY 50…"); td.colSpan=14; tr.append(td); tb.append(tr); }
+  for(const p of rows){
+    const o = p.option || {}, s = p.spot || {};
+    const tr = el("tr","main");
+    const name = el("td"); const a = el("a","b",p.symbol); a.href="/report/"+encodeURIComponent(p.symbol); a.onclick=e=>e.stopPropagation();
+    name.append(a, el("div","muted small", p.industry || "")); tr.append(name);
+    const ltp = el("td","n"); ltp.append(el("div",null,fmt(p.ltp)), el("div","small "+cls(p.change_pct), p.change_pct==null?"":sgn(p.change_pct)+"%")); tr.append(ltp);
+    const sig = el("td"); sig.append(el("span","tag "+p.status, p.status.replace("_"," ")));
+    if(p.direction){ sig.append(document.createTextNode(" ")); sig.append(el("span","tag "+p.direction, p.direction)); }
+    tr.append(sig);
+    tr.append(el("td","n "+cls(p.score), sgn(p.score)));
+    tr.append(el("td","small", o.contract || "–"));
+    tr.append(el("td","n b", fmt(o.entry)), el("td","n down", fmt(o.stop)), el("td","n up", fmt(o.t1)), el("td","n up", fmt(o.t2)));
+    tr.append(el("td","n small", p.spot ? `${fmt(s.stop)} / ${fmt(s.t1)} / ${fmt(s.t2)}` : "–"));
+    tr.append(el("td","n", o.rr!=null ? fmt(o.rr) : s.rr1!=null ? fmt(s.rr1) : "–"));
+    tr.append(el("td","n small", o.lot_size ? `${o.lot_size} · ${rs(o.capital)}` : "–"));
+    tr.append(el("td","n small", rs(o.risk_rs)));
+    tr.append(el("td","small muted", p.reason));
+    tr.onclick = () => { open.has(p.symbol) ? open.delete(p.symbol) : open.add(p.symbol); render(); };
+    tb.append(tr);
+    if(open.has(p.symbol)){
+      const d = el("tr","detail"), td = el("td"); td.colSpan = 14;
+      const wrap = el("div","grid2");
+      const c1 = el("div"); c1.append(el("b",null,"Checks"));
+      const ul = el("ul","checks"); (p.checks||[]).forEach(c=>ul.append(el("li", c.ok?"ok":"bad", `${c.name}: ${c.detail}`)));
+      if(!(p.checks||[]).length) ul.append(el("li","muted",p.reason)); c1.append(ul);
+      (p.notes||[]).forEach(n=>c1.append(el("div","note","• "+n)));
+      const c2 = el("div"); c2.append(el("b",null,"Score"));
+      const ul2 = el("ul","checks"); (p.components||[]).forEach(c=>ul2.append(el("li",null,`${sgn(c.points)}  ${c.name} (${c.value}) – ${c.note}`))); c2.append(ul2);
+      if(o.delta!=null) c2.append(el("div","note", `Delta ${fmt(o.delta)} · IV ${fmt(o.iv)}% · theta ${fmt(o.theta)}/day · reward T1 ${rs(o.reward1_rs)}, T2 ${rs(o.reward2_rs)} per lot`));
+      wrap.append(c1,c2); td.append(wrap); d.append(td); tb.append(d);
+    }
+  }
+  const bb = document.querySelector("#book tbody"); bb.replaceChildren();
+  if(!book.trades.length){ const tr=el("tr"); const td=el("td","empty","No paper trades yet today – a VALID plan inside the entry window opens one."); td.colSpan=10; tr.append(td); bb.append(tr); }
+  for(const t of book.trades){
+    const tr = el("tr");
+    const c = el("td"); c.append(el("span","tag "+t.kind,t.kind), document.createTextNode(" "+t.contract)); tr.append(c);
+    tr.append(el("td","small", t.opened.slice(11,16)), el("td","n",fmt(t.entry)), el("td","n down",fmt(t.stop)),
+              el("td","n up",fmt(t.t1)), el("td","n up",fmt(t.t2)), el("td","n",fmt(t.exit ?? t.ltp)),
+              el("td","small b", t.status.replace(/_/g," ")), el("td","n b "+cls(t.pnl), rs(t.pnl)),
+              el("td","small muted", (t.events||[]).slice(-2).join(" · ")));
+    bb.append(tr);
+  }
+}
+async function load(){
+  try{ const r = await fetch("/api/state"); if(r.ok){ state = await r.json(); render(); } }catch(e){}
+}
+load(); setInterval(load, 15000);
+</script>
+</body>
+</html>

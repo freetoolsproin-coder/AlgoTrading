@@ -1,0 +1,20 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<h2>Accounts</h2>
+<ul><li>Passwords are stored as PBKDF2-SHA256 hashes (600,000 iterations, random salt). 12+ characters with mixed character types are required.</li>
+<li>Optional two-factor sign-in with any TOTP authenticator app; set <code>require_2fa_for_admin = true</code> to enforce it for admins.</li>
+<li>After <code>max_login_failures</code> failures an account locks for <code>lockout_minutes</code>; repeated failures from one address are throttled.</li>
+<li>Sessions are rotated at sign-in, expire after <code>session_minutes</code> of inactivity, and use HttpOnly, SameSite=Strict cookies (Secure with <code>secure_cookies = true</code>).</li>
+<li>The first admin can only be created in a terminal on this computer.</li></ul>
+<h2>Requests</h2>
+<ul><li>Every form carries a CSRF token. A strict Content-Security-Policy allows only the console's own scripts and styles; framing is refused.</li>
+<li>Backtest reports open in a sandboxed origin without access to the console's cookies.</li>
+<li>CSV exports neutralise spreadsheet formulas.</li></ul>
+<h2>Credentials</h2>
+<ul><li>The vault encrypts each value with Fernet. Its key is protected with Windows DPAPI (tied to your Windows user) or supplied as <code>CONSOLE_MASTER_KEY</code>.</li>
+<li>Stored values are never sent back to the browser. Changes are audited.</li>
+<li>Logs mask anything that looks like a bearer or Telegram token.</li></ul>
+<h2>Network</h2>
+<p>The console binds to 127.0.0.1. For remote access use a VPN or an HTTPS reverse proxy (Caddy, nginx, IIS) and set <code>secure_cookies = true</code>. Never expose it over plain HTTP.</p>
+<h2>Audit log</h2>
+<p>Sign-ins (and failures), safety actions, credential and user changes, backtest runs and downloads are recorded with user, time and address in a hash-chained, append-only table.</p>
+{% endblock %}

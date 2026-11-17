@@ -1,0 +1,20 @@
+# ---- Secrets: never commit ----
+.env
+upstox_token.json
+*.tmp
+
+# ---- Runtime data, logs and state ----
+data/
+output/
+logs/
+KILL_SWITCH
+
+# ---- Old programs moved aside by src.tools.migrate_layout ----
+legacy/
+
+# ---- Python / IDE ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+.idea/

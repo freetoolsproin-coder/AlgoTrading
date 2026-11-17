@@ -1,0 +1,19 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<p>Index options are bought on premium turnover. Charges are computed per executed order:</p>
+<ul>
+<li><b>Brokerage</b>: a flat amount per order (<code>brokerage_per_order</code>).</li>
+<li><b>Exchange transaction charge</b>: premium turnover × <code>nse_txn_pct</code> (NIFTY, NSE_FO) or <code>bse_txn_pct</code> (SENSEX, BSE_FO).</li>
+<li><b>SEBI fee</b>: turnover × <code>sebi_per_crore</code> / 1 crore.</li>
+<li><b>STT</b>: sell side only, turnover × <code>stt_sell_pct</code>.</li>
+<li><b>Stamp duty</b>: buy side only, turnover × <code>stamp_buy_pct</code>.</li>
+<li><b>GST</b>: <code>gst_pct</code> of brokerage + exchange + SEBI fees.</li>
+</ul>
+<p>The current rates are on the Risk &amp; safety page. They are configuration, not live data: verify them against your broker's contract notes, because exchanges and the government revise them.</p>
+<h2>Slippage</h2>
+<p>Slippage is the difference between the price you expected and the price you got. It is already inside every fill price, so net P&amp;L includes it; the console's slippage column only estimates its size:</p>
+<ul><li>Paper: <code>slippage_pct</code> × (entry value + exit value).</li>
+<li>Live: (entry fill − paper signal price) × quantity, when the paper trade for the same position exists.</li>
+<li>Backtest: modelled inside the fills and not separately recorded.</li></ul>
+<h2>Why costs matter</h2>
+<p>On short intraday option trades, charges plus slippage often take a large share of the gross result. The Performance page shows charges as a percentage of gross P&amp;L so you can see when costs, not the signal, decide the outcome.</p>
+{% endblock %}

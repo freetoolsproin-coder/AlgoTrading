@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% from "_m.html" import empty with context %}
+{% block title %}AI assistant{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>AI assistant</h1>
+<p>Ask about your own results, risk, system health or the ML filter. Answers are built from read-only lookups into this console's data; the assistant cannot trade or change anything.</p></div></div>
+
+{% if not enabled %}
+<div class="callout">The assistant is switched off (<code>[CONSOLE] ai_enabled = false</code>).</div>
+{% elif not configured %}
+<div class="callout callout-warn"><b>No Anthropic API key yet.</b> {% if me.role == 'admin' %}Add <code>ANTHROPIC_API_KEY</code> under <a href="{{ url_for('credentials') }}">Credentials</a>.{% else %}Ask an admin to add one under Credentials.{% endif %}</div>
+{% else %}
+<div class="chat-wrap">
+<section class="panel chat" aria-label="Conversation">
+  <ol class="chat-log" id="chat-log" aria-live="polite">
+    {% for msg in history %}<li class="msg msg-{{ msg.role }}" data-md>{{ msg.content }}</li>{% endfor %}
+  </ol>
+  {% if not history %}
+  <div class="chat-empty" id="chat-empty">
+    <p class="muted">Try one of these:</p>
+    <div class="suggest">
+      <button class="btn btn-small" type="button" data-q="How are my paper books doing? Compare v1, v2 and v3.">Compare the paper lanes</button>
+      <button class="btn btn-small" type="button" data-q="Which exit reasons cost me the most in paper trading, and how much did charges take?">Where do losses come from?</button>
+      <button class="btn btn-small" type="button" data-q="Which backtest set did best out of sample, and is its sample large enough to trust?">Best backtest set</button>
+      <button class="btn btn-small" type="button" data-q="Is everything healthy for tomorrow's session? What do I need to fix?">Pre-market health check</button>
+      <button class="btn btn-small" type="button" data-q="Explain the ML filter's results in plain language. Is it approved and why?">Explain the ML filter</button>
+      <button class="btn btn-small" type="button" data-q="How close am I to my risk limits today?">Risk limits today</button>
+    </div>
+  </div>
+  {% endif %}
+  <form class="chat-form" id="chat-form" data-endpoint="{{ url_for('api_assistant') }}" data-clear="{{ url_for('api_assistant_clear') }}">
+    <label for="chat-q" class="sr-only">Your question</label>
+    <textarea id="chat-q" name="question" rows="2" maxlength="2000" placeholder="Ask about your trading data…" required></textarea>
+    <div class="chat-actions">
+      <button class="btn btn-primary" type="submit" id="chat-send">Ask</button>
+      <button class="btn" type="button" id="chat-clear">New conversation</button>
+      <span class="muted chat-status" id="chat-status" role="status"></span>
+    </div>
+  </form>
+</section>
+<aside class="panel chat-side">
+  <h2>How it works</h2>
+  <p>Claude ({{ model }}) decides which of these lookups it needs, then answers from their results:</p>
+  <ul><li>overview and books</li><li>performance and breakdowns</li><li>individual trades</li><li>risk limits and usage</li><li>system health</li><li>ML filter results</li></ul>
+  <p class="note">Sent to Anthropic: your question, this conversation and the lookup results. Never passwords, API keys or tokens. Each question is written to the audit log. Limit: {{ per_hour }} questions per hour.</p>
+  <p class="note">It explains your data; it does not give trading advice or predictions. Check important figures on the Performance page.</p>
+</aside>
+</div>
+{% endif %}
+{% endblock %}

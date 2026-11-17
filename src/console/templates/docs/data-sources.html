@@ -1,0 +1,11 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<p>Every figure in the console comes from one of three sources. Each is labelled, carries its own rail, and is never combined with another.</p>
+<p><span class="badge badge-live">Live (broker)</span> real fills at Upstox. Read from <code>data/execution.db</code> (positions the order engine held at a non-paper broker, with their fills) and, on the Broker monitor page, straight from the Upstox API. Charges are computed from the fills at the <code>[COSTS]</code> rates; the broker's contract note is the final record. Slippage is the entry fill against the paper signal price of the same position.</p>
+<p><span class="badge badge-paper">Paper (simulated)</span> the scanner's v1 / v2 / v3 books (<code>data/prebreakout.db</code>) and the movement and strategy books (<code>data/movement.db</code>). Fills are at the live ask + slippage and bid - slippage, net of charges. The slippage shown is the modelled percentage applied to both legs.</p>
+<p><span class="badge badge-backtest">Backtest (modelled)</span> files <code>output/*_trades.csv</code> written by the backtest commands. Option premiums are Black-Scholes values with IV = India VIX, a modelled spread and slippage. There are no historical option quotes, so liquidity filters and the derivatives module are untested historically.</p>
+<h2>What is excluded</h2>
+<ul><li>Mock-mode records (synthetic data from <code>--mock</code>) are never shown in the console's results.</li>
+<li>Open positions are not counted in closed-trade statistics; they are listed separately with their open P&amp;L.</li></ul>
+<h2>Nothing is estimated to fill a gap</h2>
+<p>If a source has no data, the page says so. Missing values are shown as a dash, never as zero and never as a sample figure.</p>
+{% endblock %}

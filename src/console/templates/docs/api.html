@@ -1,0 +1,13 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<p>Signed-in sessions can read JSON from these endpoints (same cookie as the pages; there are no write endpoints):</p>
+<ul>
+<li><code>GET /api/status</code>: the status bar (scanner heartbeat, market session, live gate, kill switch).</li>
+<li><code>GET /api/summary</code>: headline metrics per source, kept separate.</li>
+<li><code>GET /api/performance?source=paper&amp;book=scanner-v1&amp;from=2026-10-01&amp;to=2026-10-31</code>: full metrics for a selection.</li>
+<li><code>GET /api/risk</code>: today's risk state per lane, kill switch and live gate.</li>
+<li><code>GET /api/broker</code>: the read-only broker snapshot.</li>
+<li><code>GET /api/health</code>: every health check.</li>
+<li><code>GET /healthz</code>: unauthenticated liveness probe; returns only <code>{"status": "ok"}</code>.</li>
+</ul>
+<p>Downloads: <code>/reports/trades.csv</code>, <code>/reports/trades.json</code> (same filters), <code>/reports/orders.csv</code>, <code>/reports/audit.csv</code> (admin).</p>
+{% endblock %}

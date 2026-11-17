@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% from "_m.html" import empty with context %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Audit log</h1><p>Append-only and hash-chained: each entry seals the one before it, so an edited or deleted row is detectable.</p></div>
+<div><a class="btn" href="{{ url_for('audit_page', verify=1, action=action, actor=actor) }}">Verify chain</a>{% if me.role == 'admin' %} <a class="btn" href="{{ url_for('report_audit') }}">Download CSV</a>{% endif %}</div></div>
+{% if verify %}<div class="callout {{ '' if verify.ok else 'callout-danger' }}" role="status">{% if verify.ok %}<b>Chain intact.</b> {{ verify.rows }} entries verified.{% else %}<b>Chain broken at entry {{ verify.broken_at }}.</b> The log was modified outside the console. Keep a copy of data/console/console.db and investigate.{% endif %}</div><br>{% endif %}
+<form class="inline" method="get">
+  <div class="field"><label for="a-act">Action starts with</label><input id="a-act" name="action" value="{{ action }}" placeholder="auth, risk, vault…"></div>
+  <div class="field"><label for="a-user">User</label><input id="a-user" name="actor" value="{{ actor }}"></div>
+  <button class="btn" type="submit">Filter</button>
+</form><br>
+<section class="panel">
+{% if rows %}
+<div class="table-wrap"><table><thead><tr><th class="n">#</th><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Result</th><th>Detail</th><th>From</th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="n">{{ r.id }}</td><td class="nowrap">{{ r.time|t }}</td><td>{{ r.actor }}</td><td><code>{{ r.action }}</code></td><td class="wrap-any">{{ r.target }}</td>
+<td class="status-{{ 'ok' if r.outcome == 'ok' or r.outcome == 'finished' else 'fail' }}">{{ r.outcome }}</td><td class="wrap-any muted">{{ r.detail[:160] }}</td><td class="muted">{{ r.ip }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}{{ empty("No entries", "Sign-ins, safety actions, credential changes and downloads are recorded here.") }}{% endif %}
+</section>
+{% endblock %}

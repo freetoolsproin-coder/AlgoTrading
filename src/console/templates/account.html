@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Account{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Account</h1><p>{{ me.username }}, {{ me.role }}. Last sign-in {{ me.last_login|t }}.</p></div></div>
+<div class="grid g2">
+<section class="panel"><h2>Change password</h2>
+  <form method="post" action="{{ url_for('account') }}" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="field"><label for="pw-c">Current password</label><input id="pw-c" type="password" name="current" autocomplete="current-password" required></div>
+    <div class="field"><label for="pw-n">New password</label><input id="pw-n" type="password" name="new" autocomplete="new-password" minlength="12" required></div>
+    <div class="field"><label for="pw-a">Repeat new password</label><input id="pw-a" type="password" name="again" autocomplete="new-password" minlength="12" required></div>
+    <div><button class="btn btn-primary" type="submit">Change password</button></div>
+  </form>
+  <p class="note">12+ characters with at least three of: lower case, upper case, digits, symbols.</p>
+</section>
+<section class="panel"><h2>Two-factor sign-in</h2>
+  {% if me.totp_secret %}
+  <p><b class="status-ok">On.</b> Each sign-in asks for a 6-digit code from your authenticator app.</p>
+  <form class="inline" method="post" action="{{ url_for('account_2fa') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="disable">
+    <div class="field"><label for="c-off">Current code</label><input id="c-off" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required></div>
+    <button class="btn" type="submit">Turn off</button></form>
+  {% elif setup %}
+  <ol><li>In your authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…) add an account with this setup key:<br><code class="wrap-any">{{ setup }}</code><br><span class="muted">or open this link on the phone: <a class="wrap-any" href="{{ uri }}">{{ uri }}</a></span></li>
+  <li>Enter the 6-digit code it shows.</li></ol>
+  <form class="inline" method="post" action="{{ url_for('account_2fa') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="confirm">
+    <div class="field"><label for="c-on">Code</label><input id="c-on" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required autofocus></div>
+    <button class="btn btn-primary" type="submit">Turn on</button></form>
+  <form method="post" action="{{ url_for('account_2fa') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="cancel"><button class="btn btn-small ov-lower" type="submit">Cancel</button></form>
+  {% else %}
+  <p>Off. A second factor stops someone who learns your password from signing in. Recommended for every admin.</p>
+  <form method="post" action="{{ url_for('account_2fa') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="begin"><button class="btn btn-primary" type="submit">Set up two-factor sign-in</button></form>
+  {% endif %}
+</section>
+</div>
+<p class="note ov-lower">You accepted the risk disclosure on {{ me.risk_ack|t }}. Sessions end after inactivity.</p>
+{% endblock %}

@@ -1,0 +1,73 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "desk",
+      "runtimeExecutable": "D:\\trade_Prash\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "-m",
+        "src.desk"
+      ],
+      "port": 8500
+    },
+    {
+      "name": "desk-with-mock-fno",
+      "runtimeExecutable": "D:\\trade_Prash\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "-m",
+        "src.desk",
+        "--port",
+        "8505",
+        "--fno-url",
+        "http://127.0.0.1:8521",
+        "--no-notify"
+      ],
+      "port": 8505
+    },
+    {
+      "name": "desk-preview",
+      "runtimeExecutable": "D:\\trade_Prash\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "-m",
+        "src.desk",
+        "--port",
+        "8506",
+        "--no-notify"
+      ],
+      "port": 8506
+    },
+    {
+      "name": "equity",
+      "runtimeExecutable": "D:\\trade_Prash\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "-m",
+        "src.equity"
+      ],
+      "port": 8530
+    },
+    {
+      "name": "fno-mock",
+      "runtimeExecutable": "D:\\trade_Prash\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "-m",
+        "src.fno",
+        "--mock",
+        "--port",
+        "8521"
+      ],
+      "port": 8521
+    },
+    {
+      "name": "stocks-mock",
+      "runtimeExecutable": "D:\\trade_Prash\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "-m",
+        "src.stocks",
+        "--mock",
+        "--port",
+        "8514"
+      ],
+      "port": 8514
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<h2>The ML trade filter</h2>
+<p>The scanner's filter (<code>src/scanner/ml_filter.py</code>) is a logistic regression with readable weights. For every confirmed breakout it estimates the chance that the index reaches 1.5 R before the stop within the holding time. Its inputs are the rule engine's own measurements: score families, RSI, ADX, compression, distance beyond the level, time of day, VIX, level strength and, live, futures and breadth data.</p>
+<h3>How it is tested</h3>
+<p>Walk-forward: train on everything before a 30-day window, test on that window, move on. Only those out-of-sample predictions are scored. The model is <b>approved</b>, and may then block entries below its threshold, only if all four checks pass:</p>
+<ul><li>150 or more out-of-sample setups;</li><li>AUC of 0.55 or more (0.50 is a coin flip);</li><li>Brier skill above 0 (its probabilities beat simply using the base rate);</li><li>the setups it keeps average at least 0.05 R more than all setups.</li></ul>
+<p>Otherwise it is advisory and changes nothing. The rules always decide first; the filter can only remove trades, never add them.</p>
+<h3>Training from the console</h3>
+<p>Admins use <b>ML lab → Train and test</b>, which runs <code>python -m src.scanner.ml_filter --train</code> in the background. The scanner reloads the model file by itself. Live setups logged in <code>data/prebreakout.db</code> are included in every retraining.</p>
+<h3>Reading the ML lab</h3>
+<ul><li><b>Calibration</b>: when the model says 40%, about 40% should succeed. Bars far from the dots mean its probabilities cannot be taken literally.</li>
+<li><b>Strongest features</b>: standardised weights. They show association in past data, not cause.</li>
+<li><b>R</b> here is measured on the index, before option pricing and costs, so it is not P&amp;L.</li></ul>
+
+<h2>The AI assistant</h2>
+<p>A chat page that answers questions about your own data with Claude (Anthropic's API). Claude does not see your databases. It chooses among read-only lookups that return the console's own calculations:</p>
+<ul><li>overview, books, performance, breakdowns (book, month, exit reason, index and side, hour, weekday);</li>
+<li>individual trades (up to 50 at a time), risk limits and today's usage, system health, ML filter results.</li></ul>
+<p>The instructions it runs under require: every number from a lookup, the source named (live, paper, backtest), no adding sources or overlapping books, small samples called out, no buy/sell advice or predictions.</p>
+<h3>Setting it up</h3>
+<ol><li>Create an API key in the Anthropic Console.</li><li>An admin saves it as <code>ANTHROPIC_API_KEY</code> under <b>Credentials</b> (encrypted).</li><li>Optional, in <code>[CONSOLE]</code>: <code>ai_model</code> (default <code>claude-sonnet-5-5</code>), <code>ai_max_tokens</code>, <code>ai_requests_per_hour</code>, or <code>ai_enabled = false</code> to turn it off.</li></ol>
+<h3>Privacy and cost</h3>
+<p>Questions and lookup results go to Anthropic's API under your key and are billed to it; credentials never do. Each question, the lookups used and token counts are written to the audit log. Conversations are kept in memory only and cleared with <b>New conversation</b> or a restart.</p>
+{% endblock %}

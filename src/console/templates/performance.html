@@ -1,0 +1,61 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, empty, metrics_grid, filters, source_tabs with context %}
+{% block title %}Performance{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Performance</h1><p>Computed from recorded closed trades only. Net is after brokerage, STT, exchange, SEBI, stamp duty and GST.</p></div>
+  <div class="no-print">
+    <a class="btn" href="{{ url_for('report_performance', source=source, book=book, **{'from': start, 'to': end}) }}">Printable report</a>
+    <a class="btn" href="{{ url_for('report_trades', fmt='csv', source=source, book=book, **{'from': start, 'to': end}) }}">Trades CSV</a>
+  </div>
+</div>
+{{ source_tabs('performance', source) }}
+{{ filters('performance', source, book, books, start, end, '', combined) }}
+<br>
+{% if combined %}<div class="callout callout-warn">These books are alternative models or variants run on the same signals or the same history, so many trades appear in several books. The combined figures double-count them and do not describe any real portfolio. Pick one book to judge it.</div><br>{% endif %}
+{% if source == 'backtest' %}<div class="callout">Backtest option prices are modelled with Black-Scholes using India VIX as volatility; there are no historical option quotes, spreads or chains. Use these results to rule settings out, not to predict live P&amp;L.</div><br>{% endif %}
+{% if source == 'paper' %}<div class="callout">Paper fills are simulated at the live ask/bid plus modelled slippage. They do not include queue position, partial fills at the exchange or latency.</div><br>{% endif %}
+
+<section class="panel rail rail-{{ source }}">
+  <div class="src-head">{{ badge(source) }}<span class="muted">capital base {{ m.capital|inr }}</span></div>
+  {{ metrics_grid(m) }}
+</section>
+
+<div class="grid g2 ov-lower">
+  <section class="panel">
+    <h2>Equity: cumulative net P&amp;L</h2>
+    <div class="chart" id="chart-equity" aria-label="Cumulative net P&amp;L by closed trade"></div>
+    <div class="chart-tip" aria-live="polite"></div>
+  </section>
+  <section class="panel">
+    <h2>Net P&amp;L by day</h2>
+    <div class="chart" id="chart-daily" aria-label="Net P&amp;L per trading day"></div>
+    <div class="chart-tip"></div>
+  </section>
+</div>
+<script type="application/json" id="chart-data">{{ chart|tojson }}</script>
+
+<section class="panel ov-lower">
+  <h2>By book</h2>
+  {% if by_book %}
+  <div class="table-wrap"><table><thead><tr><th>Book</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Net</th><th class="n">Charges</th><th class="n">Profit factor</th><th class="n">Avg trade</th><th class="n">Max DD</th><th>Sample</th></tr></thead><tbody>
+  {% for r in by_book %}<tr><td>{{ r.key }}</td><td class="n">{{ r.trades }}</td><td class="n">{{ r.win_rate|num(1) }}%</td><td class="n">{{ money(r.net, true) }}</td><td class="n">{{ r.charges|inr }}</td><td class="n">{{ r.profit_factor|num(2) if r.profit_factor is not none else '—' }}</td><td class="n">{{ money(r.avg_trade, true) }}</td><td class="n">{{ r.max_dd|inr }}</td><td>{{ 'adequate' if r.sample_ok else 'too small' }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{{ empty("No trades for this selection", "Change the book or dates, or pick another source.") }}{% endif %}
+</section>
+
+<div class="grid g2 ov-lower">
+  <section class="panel"><h2>By month</h2>
+  {% if months %}<div class="table-wrap"><table><thead><tr><th>Month</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Net</th></tr></thead><tbody>
+  {% for r in months %}<tr><td>{{ r.month }}</td><td class="n">{{ r.trades }}</td><td class="n">{{ r.win_rate|num(1) }}%</td><td class="n">{{ money(r.net, true) }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}{{ empty("Nothing yet", "") }}{% endif %}</section>
+  <section class="panel"><h2>By exit reason</h2>
+  {% if by_exit %}<div class="table-wrap"><table><thead><tr><th>Exit</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Net</th></tr></thead><tbody>
+  {% for r in by_exit %}<tr><td>{{ r.key }}</td><td class="n">{{ r.trades }}</td><td class="n">{{ r.win_rate|num(1) }}%</td><td class="n">{{ money(r.net, true) }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}{{ empty("Nothing yet", "") }}{% endif %}</section>
+</div>
+<section class="panel ov-lower"><h2>By index and side</h2>
+  {% if by_index %}<div class="table-wrap"><table><thead><tr><th>Index / side</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Net</th><th class="n">Profit factor</th></tr></thead><tbody>
+  {% for r in by_index %}<tr><td>{{ r.key }}</td><td class="n">{{ r.trades }}</td><td class="n">{{ r.win_rate|num(1) }}%</td><td class="n">{{ money(r.net, true) }}</td><td class="n">{{ r.profit_factor|num(2) if r.profit_factor is not none else '—' }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}{{ empty("Nothing yet", "") }}{% endif %}
+</section>
+{% endblock %}

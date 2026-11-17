@@ -1,0 +1,37 @@
+{% extends "base.html" if me else "public.html" %}
+{% block title %}FAQ{% endblock %}
+{% block content %}
+<article class="prose">
+<h1>Frequently asked questions</h1>
+<details open><summary>What is the difference between live, paper and backtest numbers?</summary>
+<p><b>Live</b> figures are real fills at your broker, read from the order engine's journal. <b>Paper</b> figures are simulated trades the scanner and movement service take on live quotes. <b>Backtest</b> figures come from replaying historical index data with modelled option prices. Each panel carries a coloured rail (solid red, dashed amber, hatched teal) and a label, and the three are never added together.</p></details>
+<details><summary>Why does the live column say there are no trades?</summary>
+<p>Because none have happened. Live trading is off unless you arm it for the day, and until then every order goes to the simulated paper broker. The console never fills the gap with sample data.</p></details>
+<details><summary>Can the console place or cancel orders?</summary>
+<p>No. It has no route that places, modifies or cancels an order, and its broker connection refuses any request other than GET. The only trading-related actions are engaging or releasing the kill switch and disarming live trading for today.</p></details>
+<details><summary>Why can't I arm live trading from the browser?</summary>
+<p>Arming is the step that lets real money move, so it stays a deliberate action on the trading computer: <code>python -m src.execution.live_gate --arm</code> runs pre-flight checks (token, funds, unexpected open positions), shows the day's limits and asks you to type the date. A browser session can be left open, shared or hijacked; a typed confirmation in a terminal is much harder to trigger by accident.</p></details>
+<details><summary>Is net P&amp;L after fees?</summary>
+<p>Yes. Net is gross minus brokerage, STT, exchange and SEBI fees, stamp duty and GST, computed per order at the <code>[COSTS]</code> rates. Slippage is already inside the fill prices; the slippage column estimates how much of the result it explains.</p></details>
+<details><summary>Why do some ratios show a dash?</summary>
+<p>Sharpe, Sortino and daily VaR need at least 20 trading days with trades, and the confidence interval needs 30 closed trades. Below that the numbers would be noise, so the console shows a dash and says what is missing.</p></details>
+<details><summary>What does the kill switch do?</summary>
+<p>It creates the <code>KILL_SWITCH</code> file the scanner checks every cycle. New entries stop and open paper positions are squared off at the bid; when live trading is armed, live positions are closed too. Releasing it needs an admin and a typed confirmation.</p></details>
+<details><summary>Where are my API keys stored?</summary>
+<p>In <code>.env</code> or, if you move them, in the encrypted vault (<code>data/console/vault.json</code>). The vault key is protected with Windows DPAPI or supplied as <code>CONSOLE_MASTER_KEY</code>. The console never sends a stored value back to the browser.</p></details>
+<details><summary>My Upstox token expired. What now?</summary>
+<p>Run <code>python -m src.broker.auth</code>, open the printed link, sign in and paste the redirect URL back. The scanner and the console pick the new token up within a minute.</p></details>
+<details><summary>Can I use the console from my phone?</summary>
+<p>Yes, the layout adapts to phones and tablets. It listens on this computer only (127.0.0.1) by default. To reach it from another device, put it behind an HTTPS reverse proxy or a private VPN and set <code>secure_cookies = true</code>; do not expose it to the internet over plain HTTP.</p></details>
+<details><summary>Someone edited the audit log. Would I know?</summary>
+<p>Yes. Each entry stores a hash of the previous entry plus its own content, and the database refuses updates and deletes. Use <b>Verify chain</b> on the Audit log page or <code>python -m src.console --verify-audit</code>.</p></details>
+<details><summary>What does the AI assistant send to Anthropic?</summary>
+<p>Your question, the conversation so far and the results of the read-only lookups it chose (metrics, trade rows, risk limits, health checks, ML test results). It never sends passwords, API keys or the Upstox token, and it has no way to place orders or change settings. Each question is in the audit log. Turn it off with <code>ai_enabled = false</code>.</p></details>
+<details><summary>Can I trust the assistant's numbers?</summary>
+<p>It is instructed to state only figures returned by the console's own calculations and to name the source of each. Language models can still misread a table, so check anything you act on against the Performance or Risk page; the "Looked up" line under each answer shows what it read.</p></details>
+<details><summary>Why is the ML filter "advisory only"?</summary>
+<p>It may block entries only after beating the rules on data it was never trained on: at least 150 out-of-sample setups, AUC of 0.55 or more, positive Brier skill and +0.05 R for the setups it keeps. Until all four pass, it changes nothing. The ML lab shows which checks fail.</p></details>
+<details><summary>Do the backtests prove a strategy works?</summary>
+<p>No. They model option prices without real quotes or spreads and test settings that were chosen with hindsight. Use them to rule bad settings out, then paper trade for several weeks before risking money.</p></details>
+</article>
+{% endblock %}

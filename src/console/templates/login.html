@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Trading Console</title><link rel="icon" href="{{ url_for('static', filename='icon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='console.css') }}"><script src="{{ url_for('static', filename='console.js') }}" defer></script></head>
+<body><main class="auth">
+<div class="panel">
+  <h1>Trading Console</h1>
+  <p class="muted">NIFTY and SENSEX options: live, paper and backtest results, risk and system state.</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}
+  <ul class="flashes" role="alert">{% for cat, msg in messages %}<li class="flash flash-{{ cat }}">{{ msg }}</li>{% endfor %}</ul>{% endif %}{% endwith %}
+  {% if no_users %}
+  <div class="callout"><b>No account exists yet.</b><p>For security the first admin is created on this computer, not in the browser. In a terminal in the project folder run:</p><p><code>python -m src.console --create-admin</code></p><p>Then reload this page.</p></div>
+  {% elif step == '2fa' %}
+  <form method="post" action="{{ url_for('login') }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="step" value="2fa">
+    <div><label for="code">6-digit code from your authenticator app</label>
+    <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus></div>
+    <button class="btn btn-primary" type="submit">Verify and sign in</button>
+  </form>
+  {% else %}
+  <form method="post" action="{{ url_for('login', next=request.args.get('next', '')) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div><label for="u">Username</label><input id="u" name="username" autocomplete="username" autocapitalize="none" required autofocus></div>
+    <div><label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-primary" type="submit">Sign in</button>
+  </form>
+  {% endif %}
+  <p class="note">Trading involves substantial risk of loss. <a href="{{ url_for('disclosures') }}">Read the risk disclosure</a>.</p>
+</div></main></body></html>

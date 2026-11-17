@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strategy Library</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--muted:#667085;--line:#e4e7ec;--up:#0a7d45;--down:#c4320a;
+  --upbg:#e7f6ee;--downbg:#fdecea;--accent:#2f5bd3;--warn:#b54708;--warnbg:#fef4e6;--bar:#eef0f3}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--ink:#e8eaf0;--muted:#98a2b3;--line:#262b36;
+  --up:#3ccf8e;--down:#ff7a59;--upbg:#12291f;--downbg:#2e1712;--accent:#7a9cff;--warn:#f5b04c;--warnbg:#2b2112;--bar:#232833}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;
+  border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:2}
+h1{font-size:17px;margin:0} h2{font-size:13px;margin:18px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+main{padding:16px 20px;max-width:1400px;margin:0 auto}
+a{color:var(--accent)} .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:var(--bar);color:var(--muted);text-decoration:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse} th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600} td.n{white-space:nowrap;font-variant-numeric:tabular-nums}
+.rule{font-size:12.5px;color:var(--muted);max-width:420px} .rule b{color:var(--ink);font-weight:600}
+.up{color:var(--up);font-weight:700} .down{color:var(--down);font-weight:700} .muted{color:var(--muted)}
+.off{opacity:.55} .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+input,select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.note{color:var(--muted);font-size:12.5px;margin:4px 0 12px}
+@media (max-width:520px){header,main{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <h1>Strategy Library</h1><span id="count" class="pill">loading</span>
+    <a class="pill" href="/">Movement</a><a class="pill" href="/ml">Machine learning</a>
+  </div>
+  <div class="filters"><input id="q" placeholder="Filter by name or rule" aria-label="Filter">
+    <select id="cat" aria-label="Category"><option value="">All categories</option></select></div>
+</header>
+<main>
+  <p class="note">Every strategy is its own <b>paper</b> book: an UP signal buys a CE, a DOWN signal buys a PE (simulated,
+    no orders). Stops, targets and trailing stops are premium % from [STRATEGIES] / [STRATEGY_&lt;KEY&gt;] in
+    config/scanner.ini. Every parameter is an untested starting value: judge each one by its own backtest and paper
+    results (python -m src.movement.backtest --strategies KEY).</p>
+  <div id="groups"></div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+let rows = [];
+function el(tag, cls, text){const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e;}
+function latestCell(latest){
+  const td = el("td","rule");
+  const names = Object.keys(latest||{});
+  if(!names.length){td.textContent="-"; return td;}
+  for(const n of names){
+    const r = latest[n]||{}; const line = el("div");
+    line.append(el("b",null,n+" "));
+    if(r.direction) line.append(el("span", r.direction==="UP"?"up":"down", r.direction==="UP"?"CE ":"PE "));
+    line.append(document.createTextNode(r.reason||""));
+    td.append(line);
+  }
+  return td;
+}
+function render(){
+  const q = $("#q").value.toLowerCase(), cat = $("#cat").value;
+  const box = $("#groups"); box.replaceChildren();
+  const cats = [...new Set(rows.map(r=>r.category))];
+  for(const c of cats){
+    const items = rows.filter(r=>r.category===c && (!cat||cat===c) &&
+      (!q || (r.key+r.title+r.buy_ce_when+r.buy_pe_when).toLowerCase().includes(q)));
+    if(!items.length) continue;
+    box.append(el("h2",null,`${c} (${items.length})`));
+    const card = el("div","card"), t = el("table"), head = el("tr");
+    for(const h of ["Strategy","Buy CE when","Buy PE when","Data","Timeframe","Stop / target / trail","Latest"]) head.append(el("th",null,h));
+    t.append(head);
+    for(const r of items){
+      const tr = el("tr", r.enabled?"":"off");
+      const name = el("td"); name.append(el("b",null,r.title), el("div","muted",r.key)); tr.append(name);
+      tr.append(el("td","rule",r.buy_ce_when), el("td","rule",r.buy_pe_when), el("td","rule",r.data));
+      tr.append(el("td","n", r.timeframe? r.timeframe+" min":"-"));
+      tr.append(el("td","n", r.enabled && r.stop_pct!=null ? `${r.stop_pct}% / ${r.target_pct}% / ${r.trail_pct}% (R:R ${r.reward_risk})` : "disabled"));
+      tr.append(latestCell(r.latest));
+      t.append(tr);
+    }
+    card.append(t); box.append(card);
+  }
+}
+async function load(){
+  try{
+    const d = await (await fetch("/api/strategies")).json();
+    rows = d.strategies||[];
+    $("#count").textContent = `${rows.filter(r=>r.enabled).length} of ${d.count} enabled` + (d.running?"":" · engine off");
+    const sel = $("#cat");
+    if(sel.options.length===1) for(const c of [...new Set(rows.map(r=>r.category))]) sel.append(new Option(c,c));
+    render();
+  }catch(e){ $("#count").textContent = "service not reachable"; }
+}
+$("#q").addEventListener("input", render); $("#cat").addEventListener("change", render);
+load(); setInterval(load, 15000);
+</script>
+</body>
+</html>

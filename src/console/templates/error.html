@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}{{ code }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ code }}: {{ message }}</h1>{% if detail %}<p>{{ detail }}</p>{% endif %}</div></div>
+<p><a class="btn" href="{{ url_for('overview') }}">Go to the overview</a></p>
+{% endblock %}

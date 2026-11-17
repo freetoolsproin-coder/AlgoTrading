@@ -1,0 +1,106 @@
+{% extends "base.html" %}{% from "_m.html" import empty with context %}
+{% block title %}ML lab{% endblock %}
+{% block content %}
+{% set m = model %}
+<div class="page-head"><div><h1>ML lab</h1>
+<p>The scanner's trade filter: a logistic regression that estimates the chance a confirmed breakout reaches 1.5 R on the index before its stop. It is judged only on data it was not trained on.</p></div></div>
+
+<div class="grid g2">
+<section class="panel">
+  <h2>Status</h2>
+  {% if not m.exists %}
+  {{ empty("No model trained yet", "Train it below (or run python -m src.scanner.ml_filter --train). Until then the scanner trades on its rules alone and the filter shows nothing.") }}
+  {% else %}
+  <p>{% if m.approved %}<span class="badge badge-live">Approved</span> It passed every out-of-sample check, so the scanner may <b>block</b> entries whose probability is below {{ (m.threshold * 100)|round(0)|int }}%{% if not ml_cfg.allow_block %} — but blocking is switched off (<code>[ML] allow_block = false</code>){% endif %}.
+  {% else %}<span class="badge badge-plain">Advisory only</span> It has not shown an edge on unseen data, so it never blocks an entry and its probabilities are not displayed on alerts.{% endif %}</p>
+  <dl class="kv">
+    <dt>Trained</dt><dd>{{ m.trained_at|t }}</dd>
+    <dt>Labelled setups</dt><dd>{{ m.samples }}{% if m.live_samples %} ({{ m.live_samples }} live){% endif %}</dd>
+    <dt>Indices</dt><dd>{{ m.instruments|join(', ') or '—' }}</dd>
+    <dt>Label</dt><dd>{{ m.label or '—' }}</dd>
+    <dt>In the scanner now</dt><dd>{{ 'loaded' if live.loaded else 'not loaded' }}{% if live.blocking %}, blocking{% endif %}</dd>
+  </dl>
+  {% if not m.wf_ok %}<p class="sample">Walk-forward test did not run: {{ m.wf_reason }}</p>{% endif %}
+  {% endif %}
+  {% if not ml_cfg.enabled %}<p class="note status-warn">The filter is switched off in <code>[ML] enabled</code>.</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Approval checks (out-of-sample)</h2>
+  {% if m.exists and m.wf_ok %}
+  <div class="table-wrap"><table><thead><tr><th>Check</th><th class="n">Result</th><th>Needs</th><th></th></tr></thead><tbody>
+  {% for c in m.gate %}<tr><td>{{ c.label }}</td><td class="n">{% if c.value is none %}—{% elif c.key == 'oos_samples' %}{{ c.value }}{% elif c.key == 'r_uplift' %}{{ '%+.3f'|format(c.value) }} R{% else %}{{ '%.3f'|format(c.value) }}{% endif %}</td><td class="muted">{{ c.need }}</td><td class="status-{{ 'ok' if c.pass else 'fail' }}">{{ 'pass' if c.pass else 'fail' }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="note">Walk-forward: the model is retrained on everything before each 30-day window and tested on that window, so every score below comes from setups it had not seen.</p>
+  {% else %}{{ empty("No test results", "They appear after the first successful training run.") }}{% endif %}
+</section>
+</div>
+
+{% if m.exists and m.wf_ok %}
+<div class="grid g2 ov-lower">
+<section class="panel">
+  <h2>What the filter would have done</h2>
+  <div class="metrics">
+    <div class="metric"><div class="l">Base hit rate</div><div class="v">{{ (m.base_rate * 100)|round(1) }}%</div><div class="s">setups reaching 1.5 R</div></div>
+    <div class="metric"><div class="l">Hit rate of kept setups</div><div class="v">{{ (m.hit_rate_kept * 100)|round(1) if m.hit_rate_kept is not none else '—' }}%</div><div class="s">keeps {{ m.kept_pct|round(0)|int }}%</div></div>
+    <div class="metric"><div class="l">Mean R, all setups</div><div class="v {{ m.mean_r_all|pnl }}">{{ '%+.3f'|format(m.mean_r_all) }}</div></div>
+    <div class="metric"><div class="l">Mean R, kept</div><div class="v {{ m.mean_r_kept|pnl }}">{{ '%+.3f'|format(m.mean_r_kept) if m.mean_r_kept is not none else '—' }}</div></div>
+    <div class="metric"><div class="l">Mean R, dropped</div><div class="v {{ m.mean_r_dropped|pnl }}">{{ '%+.3f'|format(m.mean_r_dropped) if m.mean_r_dropped is not none else '—' }}</div></div>
+    <div class="metric"><div class="l">Brier score</div><div class="v">{{ '%.4f'|format(m.brier) }}</div><div class="s">lower is better</div></div>
+  </div>
+  <p class="note">R is measured on the index move (no option prices), before costs. A filter is only useful if the kept setups earn clearly more than all setups.</p>
+</section>
+<section class="panel">
+  <h2>Calibration: predicted vs actual</h2>
+  <div class="chart" id="chart-calibration" aria-label="Predicted probability against actual hit rate by quintile"></div>
+  <div class="chart-tip"></div>
+  <div class="table-wrap"><table><thead><tr><th>Predicted</th><th class="n">Actual</th><th class="n">Setups</th><th class="n">Mean R</th></tr></thead><tbody>
+  {% for r in m.calibration %}<tr><td>{{ (r.predicted * 100)|round(1) }}%</td><td class="n">{{ (r.actual * 100)|round(1) }}%</td><td class="n">{{ r.n }}</td><td class="n {{ r.mean_r|pnl }}">{{ '%+.2f'|format(r.mean_r) }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+</div>
+<script type="application/json" id="chart-data">{{ chart|tojson }}</script>
+
+<section class="panel ov-lower">
+  <h2>Strongest features</h2>
+  {% if m.weights %}
+  <div class="usage">
+  {% for w in m.weights %}<div class="usage-row"><span><code>{{ w.feature }}</code></span><div class="track"><div class="fill {{ 'wpos' if w.weight > 0 else 'wneg' }}" data-v="{{ w.rel }}" data-limit="1"></div></div><span class="{{ w.weight|pnl }}">{{ '%+.3f'|format(w.weight) }}</span></div>{% endfor %}
+  </div>
+  <p class="note">Standardised logistic weights: positive raises the estimated chance of reaching 1.5 R, negative lowers it. They describe association in the training data, not cause.</p>
+  {% else %}{{ empty("No weights", "") }}{% endif %}
+</section>
+{% endif %}
+
+<div class="grid g2 ov-lower">
+<section class="panel rail rail-paper">
+  <h2>Live training samples</h2>
+  {% if samples.exists %}
+  <p>{{ samples.live_labelled }} labelled live setups{% if samples.hit_rate is not none %}, {{ samples.hit_rate|round(1) }}% reached 1.5 R, mean {{ '%+.2f'|format(samples.avg_r or 0) }} R{% endif %}. They include futures and breadth features that the history lacks, so they are added to every retraining.</p>
+  {% if samples.live_labelled < 150 %}<span class="sample">{{ samples.live_labelled }} live samples is too few to train or judge a model on live data alone.</span>{% endif %}
+  {% if samples.recent %}
+  <div class="table-wrap ov-lower"><table><thead><tr><th>Time</th><th>Setup</th><th class="n">Outcome</th><th class="n">R</th></tr></thead><tbody>
+  {% for r in samples.recent %}<tr><td class="nowrap">{{ r.time|t }}</td><td>{{ r.idx }} {{ r.direction }}</td><td class="n">{{ 'hit 1.5 R' if r.y == 1 else ('stopped / timed out' if r.y == 0 else 'pending') }}</td><td class="n {{ r.r|pnl }}">{{ '%+.2f'|format(r.r) if r.r is not none else '—' }}</td></tr>{% endfor %}
+  </tbody></table></div>{% endif %}
+  {% else %}{{ empty("No samples yet", "The scanner logs every confirmed setup with its features to data/prebreakout.db.") }}{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Train the model</h2>
+  {% if me.role == 'admin' %}
+  <form method="post" action="{{ url_for('ml_train') }}" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <fieldset class="plain"><legend class="muted">History to learn from</legend>
+      {% for i in indices %}<label class="check"><input type="checkbox" name="inst_{{ i }}" value="1" {% if i == 'NIFTY' %}checked{% endif %}> {{ i }}</label>{% endfor %}
+    </fieldset>
+    <div class="field"><label for="ml-start">From</label><input id="ml-start" type="date" name="start" value="2023-01-01"></div>
+    <div><button class="btn btn-primary" type="submit">Train and test</button></div>
+  </form>
+  <p class="note">Runs <code>python -m src.scanner.ml_filter --train</code> in the background (several minutes). History missing from <code>data/history/</code> is downloaded only with a valid Upstox token. The new model replaces the old one only if training completes; approval still depends on the checks above.</p>
+  {% else %}<p class="muted">An admin can retrain the model.</p>{% endif %}
+  {% for j in jobs %}
+  <details {% if j.status == 'running' %}open{% endif %}><summary>{{ j.started|t }}: <span class="status-{{ 'ok' if j.status == 'finished' else 'fail' if j.status == 'failed' else 'warn' }}">{{ j.status }}</span></summary><pre>{{ j.output or 'Waiting for output…' }}</pre></details>
+  {% endfor %}
+</section>
+</div>
+{% endblock %}

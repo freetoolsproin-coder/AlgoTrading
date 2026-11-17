@@ -1,0 +1,41 @@
+{% extends "base.html" if me else "public.html" %}
+{% block title %}Risk disclosure{% endblock %}
+{% block content %}
+<article class="prose">
+<h1>Risk disclosure</h1>
+<p class="muted">Version 1. Read this before using the console or trading with this software.</p>
+
+<h2>Trading index options can lose you money quickly</h2>
+<p>Options on NIFTY 50 and SENSEX are leveraged. A bought option can lose its entire premium within minutes, especially near expiry. Losses can exceed what any backtest or paper result suggested.</p>
+<p>SEBI's September 2024 study of the equity derivatives segment found that about 93% of individual F&amp;O traders made net losses between FY2022 and FY2024, with aggregate losses above ₹1.8 lakh crore, and that transaction costs added substantially to those losses.</p>
+
+<h2>No result shown here is a promise</h2>
+<ul>
+<li><b>Backtest</b> results are simulations on historical index data. Option prices are modelled with Black-Scholes using India VIX; no historical option quotes, bid/ask spreads or chains were available. Real option prices, especially around fast moves, behave differently.</li>
+<li><b>Paper</b> results are simulated fills at live quotes plus a slippage assumption. They do not include queue position, exchange partial fills, latency, rejected orders or the effect of your own orders on the price.</li>
+<li><b>Live</b> results are real broker fills, but a short history says little about the future. Small samples are flagged in the console and should not be extrapolated.</li>
+<li>Strategy scores are setup-strength heuristics, not probabilities. As of the last published backtests, none of the models has been shown to be profitable after costs.</li>
+</ul>
+
+<h2>Software and technology risk</h2>
+<p>Bugs, stale or missing market data, broker API changes or outages, an expired access token, network failure, a sleeping computer or a power cut can each cause missed exits, duplicate exposure or orders that do not behave as intended. Safeguards (protective stop orders at the broker, reconciliation, the kill switch, daily arming) reduce these risks; they do not remove them. Watch live positions yourself.</p>
+
+<h2>Regulation and your broker</h2>
+<p>SEBI's framework for retail participation in algorithmic trading (February 2025, with implementation phased in from late 2025) requires API-based orders to go through your broker under its controls, including order tagging and algo identification. Check your broker's current requirements before enabling live orders. You are responsible for complying with exchange, SEBI and tax rules that apply to you.</p>
+
+<h2>Not advice</h2>
+<p>This software and its documentation are tools, not investment, tax or legal advice. Nothing here recommends buying or selling any instrument. Decide whether trading suits your finances and, if unsure, consult a SEBI-registered investment adviser.</p>
+
+<h2>Only money you can afford to lose</h2>
+<p>Use risk capital only. Keep position sizes small while you evaluate any strategy, keep <code>max_live_lots = 1</code> to begin with, and stop if results diverge from expectations.</p>
+
+{% if accept %}
+<form method="post" action="{{ url_for('accept_disclosure') }}" class="panel ov-lower">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label class="check"><input type="checkbox" name="ack" value="yes" required> I have read this risk disclosure. I understand that backtest and paper results are simulations, that live trading can lose money, and that I am responsible for my trading decisions.</label>
+  <p class="ov-lower"><button class="btn btn-primary" type="submit">Continue to the console</button></p>
+</form>
+{% endif %}
+<p class="note">Sources: <a href="https://www.sebi.gov.in/media-and-notifications/press-releases/sep-2024/updated-sebi-study-reveals-93-of-individual-traders-incurred-losses-in-equity-fando-between-fy22-and-fy24-aggregate-losses-exceed-1-8-lakh-crores-over-three-years_86906.html" rel="noopener" target="_blank">SEBI press release, September 2024</a>.</p>
+</article>
+{% endblock %}

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock Research Report</title>
+<link rel="stylesheet" href="/static/stocks.css">
+<style>
+.hero{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between}
+.hero .px{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.verdict{font-size:22px;font-weight:700}
+.range{height:8px;border-radius:4px;background:var(--bar);position:relative;margin:8px 0 4px}
+.range i{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:var(--accent)}
+.sec{margin-top:14px}
+.perf th,.perf td{padding:6px 5px}
+.wide{grid-column:span 2}
+@media (max-width:760px){.wide{grid-column:auto}}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <a class="pill" href="/">← All signals</a><h1 id="title">Research report</h1><span id="mode" class="pill"></span>
+  </div>
+  <div class="search"><input id="q" placeholder="Search another stock…" autocomplete="off" aria-label="Search stock">
+    <div class="suggest"></div></div>
+</header>
+<main id="main"><div class="empty">Building the report…</div></main>
+<script src="/static/search.js"></script>
+<script>
+setupSearch(document.getElementById("q"));
+const symbol = decodeURIComponent(location.pathname.split("/").pop()).toUpperCase();
+document.title = symbol + " – Research Report";
+const M = document.getElementById("main");
+
+function kv(pairs){ const d = el("div","kv"); for(const [k,v,c] of pairs){ d.append(el("span",null,k), el("span",c||"",v)); } return d; }
+function card(title, ...children){ const c = el("div","card pad"); c.append(el("h2",null,title)); c.lastChild.style.marginTop="0"; children.forEach(x=>x&&c.append(x)); return c; }
+
+function render(r){
+  document.getElementById("title").textContent = `${r.symbol} · ${r.name}`;
+  const mode = document.getElementById("mode"); mode.textContent = r.mock ? "MOCK DATA" : (r.nifty50 ? "NIFTY 50" : "NSE"); mode.className = "pill " + (r.mock?"mock":"");
+  M.replaceChildren();
+  const s = r.snapshot, v = r.verdict;
+  // hero
+  const hero = el("div","card pad hero");
+  const left = el("div");
+  left.append(el("div","muted small", [r.industry, "as of " + r.generated_at.slice(0,16).replace("T"," ")].filter(Boolean).join(" · ")));
+  const px = el("div","px", fmt(s.ltp)); left.append(px);
+  left.append(el("div", cls(s.change), `${sgn(s.change)} (${sgn(s.change_pct)}%)  ·  O ${fmt(s.open)}  H ${fmt(s.high)}  L ${fmt(s.low)}  PC ${fmt(s.prev_close)}`));
+  const mid = el("div"); mid.style.minWidth="260px";
+  mid.append(el("div","muted small",`52-week range ${fmt(s.low_52w)} – ${fmt(s.high_52w)} (${fmt(s.from_high_pct,1)}% from high)`));
+  const bar = el("div","range"); const dot = el("i"); dot.style.left = `calc(${Math.min(Math.max(s.range_pos_pct||0,0),100)}% - 2px)`; bar.append(dot); mid.append(bar);
+  const right = el("div"); right.append(el("div","muted small","Positional view"));
+  right.append(el("div","verdict " + (v.positional==="Bullish"?"up":v.positional==="Bearish"?"down":""), `${v.positional} (${sgn(v.score)})`));
+  right.append(el("div","small", "Intraday: " + (v.intraday || "–")));
+  hero.append(left, mid, right); M.append(hero);
+
+  // intraday plan
+  const p = r.plan;
+  if(p){
+    const o = p.option || {}, sp = p.spot || {};
+    const box = el("div");
+    const head = el("div"); head.append(el("span","tag "+p.status,p.status.replace("_"," ")));
+    if(p.direction){ head.append(document.createTextNode(" ")); head.append(el("span","tag "+p.direction,"BUY "+p.direction)); }
+    head.append(el("span","muted small","  "+p.reason)); box.append(head);
+    if(p.option){
+      const g = el("div","grid2"); g.style.marginTop="10px";
+      g.append(kv([["Contract",o.contract,"b"],["Buy at (premium)",fmt(o.entry),"b"],["Stop-loss",fmt(o.stop),"down"],
+        ["Target 1",fmt(o.t1),"up"],["Target 2",fmt(o.t2),"up"],["Reward:risk (net)",fmt(o.rr)],
+        ["Lot size · capital",`${o.lot_size} · ${rs(o.capital)}`],["Risk / reward per lot",`${rs(o.risk_rs)} / ${rs(o.reward1_rs)}–${rs(o.reward2_rs)}`]]));
+      g.append(kv([["Spot entry",fmt(sp.entry)],["Spot stop-loss",fmt(sp.stop),"down"],["Spot T1 / T2",`${fmt(sp.t1)} / ${fmt(sp.t2)}`,"up"],
+        ["Risk (points)",`${fmt(sp.risk)} (${fmt(sp.risk/sp.atr15,2)} ATR15)`],["Delta · IV · theta",`${fmt(o.delta)} · ${fmt(o.iv)}% · ${fmt(o.theta)}`],
+        ["Expiry",o.expiry||"–"]]));
+      box.append(g);
+    } else if(p.spot){
+      box.append(kv([["Spot entry",fmt(sp.entry)],["Spot stop-loss",fmt(sp.stop),"down"],["Spot T1 / T2",`${fmt(sp.t1)} / ${fmt(sp.t2)}`,"up"]]));
+    }
+    const ul = el("ul","checks"); ul.style.marginTop="10px"; (p.checks||[]).forEach(c=>ul.append(el("li",c.ok?"ok":"bad",`${c.name}: ${c.detail}`)));
+    box.append(ul); (p.notes||[]).forEach(n=>box.append(el("div","note","• "+n)));
+    const ul2 = el("ul","checks"); (p.components||[]).forEach(c=>ul2.append(el("li",null,`${sgn(c.points)}  ${c.name} (${c.value}) – ${c.note}`)));
+    if((p.components||[]).length){ box.append(el("div","note","Score breakdown (15-minute + daily):")); box.append(ul2); }
+    const c = card("Intraday option plan", box); c.classList.add("sec"); M.append(c);
+  }
+
+  const g = el("div","grid2 sec");
+  // performance
+  const perf = el("table","perf"); const h = el("tr"); ["","1W","1M","3M","6M","1Y"].forEach(x=>h.append(el("th",x?"n":"",x))); perf.append(h);
+  for(const [label, rr] of [[r.symbol, r.performance.stock],["NIFTY 50", r.performance.nifty]]){
+    const tr = el("tr"); tr.append(el("td","b",label));
+    ["1W","1M","3M","6M","1Y"].forEach(k=>tr.append(el("td","n "+cls(rr[k]), rr[k]==null?"–":sgn(rr[k])+"%"))); perf.append(tr);
+  }
+  const pc = card("Performance", perf); pc.classList.add("wide"); g.append(pc);
+  const t = r.technicals, rk = r.risk;
+  g.append(card("Trend & momentum (daily)", kv([
+    ["Close",fmt(t.close)],["EMA 20",fmt(t.ema20), t.close>t.ema20?"up":"down"],["EMA 50",fmt(t.ema50), t.close>t.ema50?"up":"down"],
+    ["EMA 200",fmt(t.ema200), t.ema200==null?"":t.close>t.ema200?"up":"down"],["RSI 14",fmt(t.rsi,1)],["ADX 14",fmt(t.adx,1)],
+    ["MACD / signal",`${fmt(t.macd)} / ${fmt(t.macd_signal)}`, cls(t.macd_hist)]])));
+  g.append(card("Risk", kv([["Volatility (20d, annualised)", rk.hist_vol_20d==null?"–":fmt(rk.hist_vol_20d,1)+"%"],
+    ["Beta vs NIFTY (1y)",fmt(rk.beta_1y)],["ATR 14 (daily)",`${fmt(rk.atr_14d)} (${fmt(rk.atr_pct)}%)`]])));
+  const lv = r.levels, pv = lv.pivots;
+  g.append(card("Key levels", kv([["Resistance (swing)", lv.resistance.map(x=>fmt(x)).join(" · ")||"–","down"],
+    ["Support (swing)", lv.support.map(x=>fmt(x)).join(" · ")||"–","up"],
+    ["Pivot R3 / R2 / R1",`${fmt(pv.R3)} / ${fmt(pv.R2)} / ${fmt(pv.R1)}`],["Pivot P",fmt(pv.P),"b"],
+    ["Pivot S1 / S2 / S3",`${fmt(pv.S1)} / ${fmt(pv.S2)} / ${fmt(pv.S3)}`]])));
+  const op = r.options;
+  g.append(card("Options positioning", op ? kv([["Expiry · lot", `${op.expiry||"–"} · ${op.lot_size||"–"}`],["Put-call ratio (OI)",fmt(op.pcr)],
+    ["Max pain",fmt(op.max_pain)],["Call-OI wall (resistance)",fmt(op.ce_wall),"down"],["Put-OI wall (support)",fmt(op.pe_wall),"up"],
+    ["ATM strike · IV",`${fmt(op.atm_strike)} · ${fmt(op.atm_iv)}%`],["ATM straddle (expected move)",fmt(op.atm_straddle)]])
+    : el("div","muted", r.nifty50 ? "Option chain unavailable right now." : "Not an F&O stock in this service – no option data.")));
+  const vr = el("ul","checks"); v.reasons.forEach(x=>vr.append(el("li", x.points>0?"ok":"bad", x.text)));
+  g.append(card("Why "+v.positional.toLowerCase(), vr));
+  M.append(g);
+
+  const f = r.fundamentals;
+  const fb = el("div");
+  if(f.available){
+    if(f.sector) fb.append(el("div","muted small",[f.sector,f.industry].filter(Boolean).join(" · ")));
+    fb.append(kv(Object.entries(f.metrics).map(([k,x])=>[k,fmt(x)])));
+    if(f.summary) fb.append(el("p","small",f.summary+"…"));
+    fb.append(el("div","note","Source: "+f.source));
+  } else fb.append(el("div","muted",f.note));
+  const fc = card("Fundamentals", fb); fc.classList.add("sec"); M.append(fc);
+  M.append(el("p","note", r.disclaimer));
+}
+
+(async ()=>{
+  try{
+    const res = await fetch("/api/report/" + encodeURIComponent(symbol));
+    const r = await res.json();
+    if(!res.ok || r.error){ M.replaceChildren(el("div","card empty", r.error || "Report unavailable.")); return; }
+    render(r);
+  }catch(e){ M.replaceChildren(el("div","card empty","Could not load the report: " + e)); }
+})();
+</script>
+</body>
+</html>

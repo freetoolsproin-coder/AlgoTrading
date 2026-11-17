@@ -1,0 +1,20 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<p>The console is a web interface over the trading application in this folder. It shows real results and system state; the trading itself still happens in the scanner and the movement service.</p>
+<h2>What runs where</h2>
+<ul>
+<li><code>python -m src.main</code>: the NIFTY / SENSEX scanner, its three paper books (v1, v2, v3), the order engine and the built-in dashboard on port 8502.</li>
+<li><code>python -m src.movement</code>: the movement-trigger service and its paper books, on port 8503.</li>
+<li><code>python -m src.console</code>: this console, on port 8510. It reads the other two; it does not need them running.</li>
+</ul>
+<h2>First run</h2>
+<ol>
+<li>Install the requirements once: <code>python -m pip install -r requirements.txt</code>.</li>
+<li>Create the first admin in a terminal: <code>python -m src.console --create-admin</code> (add <code>--username yourname</code> for another name).</li>
+<li>Start it: <code>python -m src.console</code>, or in VS Code pick <b>Trading console (web)</b> and press F5.</li>
+<li>Open <code>http://127.0.0.1:8510</code>, sign in and accept the risk disclosure.</li>
+<li>Under <b>Account</b>, turn on two-factor sign-in.</li>
+<li>Under <b>Credentials</b>, move your API keys out of plain-text <code>.env</code> into the encrypted vault.</li>
+</ol>
+<h2>Settings</h2>
+<p>Optional, in <code>[CONSOLE]</code> of <code>config/scanner.ini</code>: <code>host</code>, <code>port</code>, <code>session_minutes</code>, <code>secure_cookies</code>, <code>max_login_failures</code>, <code>lockout_minutes</code>, <code>broker_cache_seconds</code>, <code>require_2fa_for_admin</code>. Restart the console after changing them.</p>
+{% endblock %}

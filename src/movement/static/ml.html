@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Signal Lab</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--muted:#667085;--line:#e4e7ec;--up:#0a7d45;--down:#c4320a;
+  --upbg:#e7f6ee;--downbg:#fdecea;--accent:#2f5bd3;--warn:#b54708;--warnbg:#fef4e6;--bar:#eef0f3}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--ink:#e8eaf0;--muted:#98a2b3;--line:#262b36;
+  --up:#3ccf8e;--down:#ff7a59;--upbg:#12291f;--downbg:#2e1712;--accent:#7a9cff;--warn:#f5b04c;--warnbg:#2b2112;--bar:#232833}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--card)}
+h1{font-size:17px;margin:0} h2{font-size:13px;margin:0 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+main{padding:16px 20px;max-width:1200px;margin:0 auto;display:grid;gap:16px}
+a{color:var(--accent)} .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:var(--bar);color:var(--muted);text-decoration:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0;overflow-x:auto}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 14px}
+label{display:grid;gap:3px;font-size:12px;color:var(--muted)}
+input,select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0}
+button{font:inherit;padding:7px 16px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+pre{white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Consolas,monospace;margin:0}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left} th{font-size:12px;color:var(--muted)}
+.up{color:var(--up);font-weight:700} .down{color:var(--down);font-weight:700} .muted{color:var(--muted)}
+.msg{font-size:13px;margin-top:10px} .err{color:var(--down)} .ok{color:var(--up)}
+.note{color:var(--muted);font-size:12.5px}
+.bar{height:8px;background:var(--bar);border-radius:4px;position:relative;min-width:120px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+@media (max-width:520px){header,main{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>ML Signal Lab</h1>
+  <a class="pill" href="/">Movement</a><a class="pill" href="/strategies">Strategies</a>
+</header>
+<main>
+  <section class="card">
+    <h2>Live probabilities (strategy ml_signal)</h2>
+    <div id="live" class="note">Loading…</div>
+  </section>
+
+  <section class="card">
+    <h2>Train a model</h2>
+    <form id="train">
+      <label>Index<select name="index"><option>NIFTY</option><option>SENSEX</option></select></label>
+      <label>Bar timeframe (min)<select name="timeframe"><option>1</option><option>3</option><option selected>5</option>
+        <option>10</option><option>15</option><option>30</option><option>60</option></select></label>
+      <label>Horizon (bars ahead)<input name="horizon" type="number" min="1" max="60" value="6"></label>
+      <label>Move to predict (ATR)<input name="min_move_atr" type="number" step="0.1" min="0.1" value="1.0"></label>
+      <label>Test share (latest days)<input name="holdout" type="number" step="0.05" min="0" max="0.8" value="0.3"></label>
+      <label>Signal rate<input name="signal_rate" type="number" step="0.01" min="0.01" max="0.4" value="0.05"></label>
+      <label>History from<input name="start" type="date" value="2023-01-01"></label>
+    </form>
+    <div style="margin-top:12px"><button id="go">Train</button></div>
+    <div id="msg" class="msg"></div>
+    <p class="note">Logistic regression on completed bars, chronological split: the latest days are never used in
+      training and give the test numbers. The threshold is set on the end of the training period, and the
+      strategy gives no signal on any day the model trained on. A good AUC is not a profitable options strategy:
+      backtest it with option costs (python -m src.movement.backtest --strategies ml_signal).</p>
+  </section>
+
+  <section class="card">
+    <h2>Trained models</h2>
+    <div id="models" class="note">Loading…</div>
+  </section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const el = (t,c,x)=>{const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e;};
+const pct = v => v==null||isNaN(v) ? "-" : (100*v).toFixed(1)+"%";
+const num = (v,d=3) => v==null||isNaN(v) ? "-" : Number(v).toFixed(d);
+
+async function live(){
+  try{
+    const d = await (await fetch("/api/ml/predict")).json();
+    const box = $("#live"); box.replaceChildren();
+    if(!d.enabled){ box.textContent = d.note || "ml_signal not running"; return; }
+    const t = el("table"), h = el("tr");
+    for(const x of ["Index","P(up)","P(down)","Signal / reason"]) h.append(el("th",null,x));
+    t.append(h);
+    for(const [name,r] of Object.entries(d.indices||{})){
+      const v = r.values||{}, tr = el("tr");
+      tr.append(el("td",null,name));
+      for(const [k,cls] of [["p_up","up"],["p_down","down"]]){
+        const td = el("td"), bar = el("div","bar"), i = el("i");
+        i.style.width = Math.round(100*(v[k]||0))+"%"; i.style.background = cls==="up"?"var(--up)":"var(--down)";
+        bar.append(i); td.append(el("div",null,num(v[k],2)), bar); tr.append(td);
+      }
+      const why = el("td"); why.style.whiteSpace="normal"; why.style.textAlign="left";
+      if(r.direction) why.append(el("span", r.direction==="UP"?"up":"down", r.direction==="UP"?"CE ":"PE "));
+      why.append(document.createTextNode(r.reason||"")); tr.append(why); t.append(tr);
+    }
+    box.append(t);
+  }catch(e){ $("#live").textContent = "service not reachable"; }
+}
+
+function reportTable(m){
+  const t = el("table"), h = el("tr");
+  for(const x of ["Period","Side","AUC","Base rate","Signals","Threshold","Precision","Avg move (ATR) signals / all"]) h.append(el("th",null,x));
+  t.append(h);
+  for(const part of ["train","test"]) for(const [side,r] of Object.entries((m.report||{})[part]||{})){
+    const tr = el("tr");
+    tr.append(el("td",null, part==="test" ? "test (unseen)" : "train"), el("td", side==="up"?"up":"down", side));
+    tr.append(el("td",null,num(r.auc)), el("td",null,pct(r.base_rate)), el("td",null,r.signals),
+              el("td",null,num(r.threshold,2)), el("td",null,pct(r.precision)),
+              el("td",null, r.avg_fwd_atr_signals==null ? "-" : `${num(r.avg_fwd_atr_signals,2)} / ${num(r.avg_fwd_atr_all,2)}`));
+    t.append(tr);
+  }
+  return t;
+}
+
+async function models(){
+  const d = await (await fetch("/api/ml/models")).json();
+  const box = $("#models"); box.replaceChildren();
+  if(!(d.models||[]).length){ box.textContent = "No model trained yet."; return; }
+  for(const m of d.models){
+    const head = el("p");
+    head.append(el("b",null,`${m.index} · ${m.timeframe}-min bars · ${m.min_move_atr} ATR in ${m.horizon} bars`),
+      el("span","muted",`  train ${m.train_start} → ${m.train_end} (${m.train_days} d), test ${m.test_start||"-"} → ${m.test_end||"-"} (${m.test_days} d), trained ${m.trained_at}`));
+    box.append(head, reportTable(m));
+  }
+}
+
+$("#go").addEventListener("click", async () => {
+  const body = Object.fromEntries(new FormData($("#train")).entries());
+  for(const k of ["timeframe","horizon"]) body[k] = parseInt(body[k]);
+  for(const k of ["min_move_atr","holdout","signal_rate"]) body[k] = parseFloat(body[k]);
+  $("#go").disabled = true; const msg = $("#msg"); msg.className = "msg"; msg.textContent = "Training…";
+  try{
+    const r = await fetch("/api/ml/train", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+    const job = await r.json();
+    if(!r.ok) throw new Error(job.error || r.statusText);
+    for(;;){
+      await new Promise(res => setTimeout(res, 1500));
+      const s = await (await fetch(`/api/ml/jobs/${job.id}`)).json();
+      if(s.status === "running") continue;
+      if(s.status === "failed") throw new Error(s.error);
+      msg.className = "msg ok"; msg.replaceChildren(el("pre",null,s.report)); break;
+    }
+    models();
+  }catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
+  finally{ $("#go").disabled = false; }
+});
+live(); models(); setInterval(live, 10000);
+</script>
+</body>
+</html>

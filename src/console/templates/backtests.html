@@ -1,0 +1,47 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, empty with context %}
+{% block title %}Backtests{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Backtests</h1>
+<p>Historical simulations on cached 1-minute index history. Options are priced with Black-Scholes using India VIX; there are no historical option quotes, so treat results as a filter for bad settings.</p></div></div>
+
+{% if me.role == 'admin' %}
+<section class="panel">
+  <h2>Run a backtest</h2>
+  <form class="inline" method="post" action="{{ url_for('backtest_run') }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="field"><label for="b-kind">Type</label><select id="b-kind" name="kind">{% for k, v in kinds.items() %}<option value="{{ k }}">{{ v.label }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="b-inst">Index</label><select id="b-inst" name="instrument">{% for i in indices %}<option>{{ i }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="b-start">From (optional)</label><input id="b-start" type="date" name="start"></div>
+    <div class="field"><label for="b-end">To (optional)</label><input id="b-end" type="date" name="end"></div>
+    <button class="btn btn-primary" type="submit">Start backtest</button>
+  </form>
+  <p class="note">Runs the same command you would type in a terminal, one at a time, using <code>config/scanner.ini</code> as it is now. Missing history is downloaded only if an Upstox token is present. Long runs (20+ minutes for the movement books) keep going if you leave this page.</p>
+</section>
+{% endif %}
+
+{% if jobs %}
+<section class="panel ov-lower"><h2>Recent runs</h2>
+{% for j in jobs %}
+<details {% if j.status == 'running' %}open{% endif %}><summary>{{ j.label }}: <span class="status-{{ 'ok' if j.status == 'finished' else 'fail' if j.status == 'failed' else 'warn' }}">{{ j.status }}</span> <span class="muted">started {{ j.started|t }} by {{ j.actor }}{% if j.finished %}, finished {{ j.finished|t }}{% endif %}</span></summary>
+<p><code>{{ j.command }}</code></p><pre>{{ j.output or 'Waiting for output…' }}</pre></details>
+{% endfor %}
+{% if jobs|selectattr('status', 'equalto', 'running')|list %}<p class="note">Reload the page to see new output.</p>{% endif %}
+</section>
+{% endif %}
+
+<section class="panel rail rail-backtest ov-lower">
+  <div class="src-head"><h2>Result sets</h2>{{ badge('backtest') }}</div>
+  {% if sets %}
+  <div class="table-wrap"><table><thead><tr><th>Set</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Net</th><th class="n">Charges</th><th class="n">Profit factor</th><th class="n">Max DD</th><th></th></tr></thead><tbody>
+  {% for s in sets %}<tr><td>{{ s.label }}</td><td class="n">{{ s.trades }}</td><td class="n">{{ s.win_rate|num(1) }}%</td><td class="n">{{ money(s.net, true) }}</td><td class="n">{{ s.charges|inr }}</td><td class="n">{{ s.profit_factor|num(2) if s.profit_factor is not none else '—' }}</td><td class="n">{{ s.max_dd|inr }}</td>
+  <td><a href="{{ url_for('performance', source='backtest', book=s.key) }}">Analytics</a></td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{{ empty("No backtest trade files yet", "Backtests write output/*_trades.csv; run one above or from a terminal.") }}{% endif %}
+</section>
+
+<section class="panel ov-lower"><h2>Reports</h2>
+  {% if reports %}<ul>{% for r in reports %}<li><a href="{{ url_for('backtest_report', name=r.name) }}" target="_blank" rel="noopener">{{ r.name }}</a> <span class="muted">({{ (r.size / 1024)|round|int }} KB)</span></li>{% endfor %}</ul>
+  <p class="note">Reports open in a sandboxed tab.</p>
+  {% else %}{{ empty("No reports yet", "Each backtest writes an HTML report to the output folder.") }}{% endif %}
+</section>
+{% endblock %}

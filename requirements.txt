@@ -1,0 +1,10 @@
+# NIFTY & SENSEX pre-breakout CE/PE scanner - Python 3.10+ (tested on 3.12 / 3.13)
+# Install: python -m pip install -r requirements.txt
+numpy>=1.26
+pandas>=2.1
+requests>=2.31
+websockets>=13.0      # Upstox market-data WebSocket (asyncio client)
+protobuf>=4.25        # decodes the Upstox V3 feed (src/broker/MarketDataFeedV3_pb2.py)
+flask>=3.0            # movement trigger web service (python -m src.movement), equity service (python -m src.equity)
+waitress>=3.0         # production WSGI server for it (Windows-friendly)
+cryptography>=42.0    # trading console: encrypted credential vault (python -m src.console)

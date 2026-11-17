@@ -1,0 +1,23 @@
+date,description,type
+# NSE trading holidays (equity + equity derivatives). type: holiday = market closed;
+# special_session = a weekend/holiday session (Budget day, Muhurat); the scanner does NOT trade those.
+# Source: NSE holiday list for 2026 (as published by NSE, incl. the 15 Jan 2026 election holiday).
+# ADD NEXT YEAR'S LIST when NSE publishes its circular (usually in December). The scanner logs a warning at start-up when the current year is missing.
+2026-01-15,Maharashtra municipal elections,holiday
+2026-01-26,Republic Day,holiday
+2026-02-01,Union Budget special session (Sunday),special_session
+2026-03-03,Holi,holiday
+2026-03-26,Shri Ram Navami,holiday
+2026-03-31,Shri Mahavir Jayanti,holiday
+2026-04-03,Good Friday,holiday
+2026-04-14,Dr. Baba Saheb Ambedkar Jayanti,holiday
+2026-05-01,Maharashtra Day,holiday
+2026-05-28,Bakri Id,holiday
+2026-06-26,Muharram,holiday
+2026-09-14,Ganesh Chaturthi,holiday
+2026-10-02,Mahatma Gandhi Jayanti,holiday
+2026-10-20,Dussehra,holiday
+2026-11-08,Diwali Laxmi Pujan - Muhurat trading (Sunday; timings by NSE circular),special_session
+2026-11-10,Diwali Balipratipada,holiday
+2026-11-24,Prakash Gurpurb Sri Guru Nanak Dev,holiday
+2026-12-25,Christmas,holiday

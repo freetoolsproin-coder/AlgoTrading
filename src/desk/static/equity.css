@@ -1,0 +1,67 @@
+/* Intraday cash + Swing tabs (src/equity). Uses the desk's colour variables. */
+main.tabs > section{display:none;margin-top:0}
+main.tabs > section.show{display:block}
+.eq-bar{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;margin:0 0 14px;padding:10px 14px}
+.eq-bar .grow{flex:1;min-width:0}
+.btn{font:inherit;font-size:13px;font-weight:650;padding:6px 13px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--faint)} .btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{background:var(--pe);border-color:var(--pe);color:#fff}
+.btn.good{background:var(--ce);border-color:var(--ce);color:#fff}
+.btn.sm{padding:3px 9px;font-size:12px;border-radius:7px}
+.seg button.live.on{background:var(--pe);color:#fff}
+.banner{padding:11px 15px;border-radius:12px;margin:0 0 14px;font-size:13.5px;font-weight:600;border-left:3px solid currentColor}
+.banner.warn{background:var(--amber-bg);color:var(--amber)} .banner.bad{background:var(--pe-bg);color:var(--pe)}
+.banner.info{background:var(--accent-bg);color:var(--accent)}
+.banner small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
+.banner .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px;color:var(--ink);font-weight:500}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:14px;align-items:start}
+.cols.wide{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}
+@media (max-width:1100px){.cols.wide{grid-template-columns:minmax(0,1fr)}}
+.blk{margin-top:18px}
+.blk > h3{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:15px;margin:0 0 9px}
+.blk > h3 span{font-weight:400;font-size:12.5px;color:var(--muted)}
+.blk > h3 .right{margin-left:auto}
+.opps{display:grid;gap:10px}
+.opp{padding:13px 16px 12px;border-left:3px solid var(--bar);cursor:pointer;min-width:0}
+.opp:hover{border-color:var(--faint)} .opp.sel{box-shadow:0 0 0 2px var(--accent)}
+.opp.BUY{border-left-color:var(--ce)} .opp.SELL{border-left-color:var(--pe)} .opp.dim{opacity:.78}
+.opp-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.opp-top b{font-size:15px} .opp-top .right{margin-left:auto;display:flex;gap:5px;align-items:center}
+.tag.BUY{background:var(--ce-bg);color:var(--ce)} .tag.SELL{background:var(--pe-bg);color:var(--pe)}
+.tag.NOTRADE{background:var(--bar);color:var(--muted)} .tag.ok{background:var(--accent-bg);color:var(--accent)}
+.tag.warn{background:var(--amber-bg);color:var(--amber)}
+.lv{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));background:var(--surface);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:9px 0 7px}
+.lv div{box-shadow:0 0 0 .5px var(--line);padding:5px 9px;min-width:0}
+.lv span{display:block;font-size:10px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.lv b{font-weight:600;font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+.lv .sl b{color:var(--pe)} .lv .tg b{color:var(--ce)}
+.opp .why{max-width:none;min-width:0;font-size:12.5px;color:var(--muted)}
+.opp .meta{display:flex;gap:4px 12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:5px}
+.opp .meta b{color:var(--ink);font-weight:600}
+.comp{display:grid;grid-template-columns:auto 1fr auto;gap:3px 9px;font-size:12px;align-items:center}
+.comp i{display:block;height:5px;border-radius:3px;background:var(--bar);overflow:hidden}
+.comp i u{display:block;height:100%;background:var(--accent)}
+.chartbox{padding:12px 14px 10px;min-width:0}
+.chart-head{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.chart-head select{font:inherit;font-weight:650;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.chart-wrap{position:relative;width:100%;height:400px}
+.chart-wrap canvas{width:100%;height:100%;display:block}
+.legend{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
+.depth{font-size:12px;font-variant-numeric:tabular-nums}
+.depth td,.depth th{padding:3px 8px}
+.arrow.up{color:var(--ce)} .arrow.down{color:var(--pe)} .arrow.flat{color:var(--faint)}
+td.reason{max-width:420px;font-size:12.5px;color:var(--muted)}
+.frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px 14px;margin-top:8px}
+.frm label{display:grid;gap:3px;font-size:11.5px;color:var(--muted)}
+.frm input{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);width:100%}
+.prog{height:4px;border-radius:4px;background:var(--bar);overflow:hidden;min-width:60px}
+.prog div{height:100%;background:var(--ce)} .prog.neg div{background:var(--pe)}
+#toast{position:fixed;right:18px;bottom:18px;z-index:60;display:grid;gap:8px;max-width:min(420px,calc(100vw - 36px))}
+#toast div{padding:10px 14px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:13px;box-shadow:var(--shadow)}
+#toast div.err{background:var(--pe);color:#fff}
+.alist{max-height:340px;overflow:auto}
+.alist div{padding:7px 14px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:pre-line}
+.alist div:last-child{border-bottom:0} .alist time{color:var(--faint);margin-right:8px;font-variant-numeric:tabular-nums}
+.tbl table td.sm,.tbl table th.sm{font-size:12.5px}

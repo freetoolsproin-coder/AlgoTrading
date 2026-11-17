@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, empty, filters, source_tabs with context %}
+{% block title %}Trade blotter{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Trade blotter</h1><p>Every recorded trade with its fees and slippage, newest first. {{ total }} trades in this selection.</p></div>
+  <div><a class="btn" href="{{ url_for('report_trades', fmt='csv', source=source, book=book, **{'from': start, 'to': end}) }}">Download CSV</a>
+  <a class="btn" href="{{ url_for('report_trades', fmt='json', source=source, book=book, **{'from': start, 'to': end}) }}">JSON</a></div>
+</div>
+{{ source_tabs('trades', source) }}
+{{ filters('trades', source, book, books, start, end) }}
+<br>
+<section class="panel rail rail-{{ source }}">
+{% if rows %}
+<div class="table-wrap"><table>
+<thead><tr><th>Entry</th><th>Book</th><th>Contract</th><th class="n">Qty</th><th class="n">Entry px</th><th class="n">Exit px</th><th class="n">Gross</th><th class="n">Charges</th><th class="n">Slippage</th><th class="n">Net</th><th>Exit</th></tr></thead>
+<tbody>
+{% for t in rows %}
+<tr><td class="nowrap">{{ t.entry_time|t }}<span class="sub">{% if t.exit_time %}out {{ t.exit_time[11:16] }}{% endif %}</span></td>
+<td>{{ t.book }}</td><td class="wrap-any">{{ t.symbol }}<span class="sub">{{ t.index }} {{ t.side }}</span></td>
+<td class="n">{{ t.qty }}</td><td class="n">{{ t.entry_price|num }}</td><td class="n">{{ t.exit_price|num }}</td>
+<td class="n">{{ money(t.gross, true) }}</td><td class="n">{{ t.charges|inr }}</td>
+<td class="n" title="{{ t.slippage_basis }}">{{ t.slippage|inr if t.slippage is not none else '—' }}</td>
+<td class="n">{% if t.open %}<span class="badge badge-plain">open</span> {{ money(t.open_pnl, true) }}{% else %}{{ money(t.net, true) }}{% endif %}</td>
+<td>{{ t.exit_reason or '—' }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% if pages > 1 %}<p class="note">Page {{ page }} of {{ pages }}.
+{% if page > 1 %}<a href="{{ url_for('trades', source=source, book=book, page=page-1, **{'from': start, 'to': end}) }}">Newer</a>{% endif %}
+{% if page < pages %}<a href="{{ url_for('trades', source=source, book=book, page=page+1, **{'from': start, 'to': end}) }}">Older</a>{% endif %}</p>{% endif %}
+<p class="note">Slippage: {{ rows[0].slippage_basis or 'not measured for this source' }}. It is already inside the fill prices, so it is not subtracted again from net.</p>
+{% elif source == 'live' %}
+{{ empty("No live trades recorded", "Live trades come from fills at your broker, journalled in data/execution.db. None exist yet: orders have gone to the simulated paper broker only.") }}
+{% else %}
+{{ empty("No trades for this selection", "Change the filters, or pick another source.") }}
+{% endif %}
+</section>
+{% endblock %}

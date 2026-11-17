@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, empty with context %}
+{% block title %}Paper trading{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Paper trading</h1>
+<p>Simulated books that run inside the scanner (<code>python -m src.main</code>) and the movement service (<code>python -m src.movement</code>). No order reaches an exchange from these books.</p></div></div>
+
+<section class="panel">
+  <h2>How paper fills are simulated</h2>
+  <div class="grid g3">
+    <div><h3>Entry</h3><p>Bought at the live ask plus {{ pb.slippage_pct }}% slippage; when no ask is quoted, LTP plus half of an assumed {{ pb.assumed_spread_pct }}% spread.</p></div>
+    <div><h3>Exit</h3><p>Sold at the live bid minus {{ pb.slippage_pct }}% slippage. Positions are never exited on a missing quote.</p></div>
+    <div><h3>Charges</h3><p>Brokerage, STT, exchange and SEBI fees, stamp duty and GST at the rates in <code>[COSTS]</code>, on every leg.</p></div>
+  </div>
+  <p class="note">Order mirror: lane <b>{{ exec.lane or 'v1' }}</b> is also sent through the full order path to the {{ 'simulated paper broker' if exec.broker == 'paper' or not exec.broker else exec.broker }} ({{ exec.mode or 'paper' }} mode), journalled in <code>data/execution.db</code>; see the <a href="{{ url_for('broker') }}">order journal</a>.</p>
+</section>
+
+{% if books %}
+<div class="grid g2 ov-lower">
+{% for b in books %}{% set m = b.m %}
+<section class="panel rail rail-paper">
+  <div class="src-head"><h2>{{ b.label }}</h2><a href="{{ url_for('performance', source='paper', book=b.key) }}">Analytics</a></div>
+  <dl class="kv">
+    <dt>Closed trades</dt><dd>{{ m.trades }}</dd>
+    <dt>Net after charges</dt><dd class="{{ m.net|pnl }}">{{ m.net|inr(0, true) }}</dd>
+    <dt>Charges</dt><dd>{{ m.charges|inr }}</dd>
+    <dt>Win rate</dt><dd>{{ (m.win_rate|num(1) ~ '%') if m.win_rate is not none else '—' }}</dd>
+    <dt>Profit factor</dt><dd>{{ m.profit_factor|num(2) if m.profit_factor is not none else '—' }}</dd>
+    <dt>Max drawdown</dt><dd>{{ m.drawdown.amount|inr }}</dd>
+    <dt>Period</dt><dd>{{ m.first_day or '—' }} to {{ m.last_day or '—' }}</dd>
+  </dl>
+  {% if m.sample_note %}<span class="sample">{{ m.sample_note }}</span>{% endif %}
+  {% if b.open %}<h3>Open now</h3><ul>{% for t in b.open %}<li>{{ t.symbol }}, {{ t.qty }} qty at {{ t.entry_price|num }}: {{ money(t.open_pnl, true) }}</li>{% endfor %}</ul>{% endif %}
+</section>
+{% endfor %}
+</div>
+{% else %}
+<div class="ov-lower">{{ empty("No paper trades yet", "Start the scanner or the movement service; their simulated trades appear here.") }}</div>
+{% endif %}
+{% endblock %}

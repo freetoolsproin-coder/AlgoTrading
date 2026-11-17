@@ -1,0 +1,93 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, empty with context %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Overview</h1><p>Each column is one data source. Sources are never added together, and neither are books that trade the same signals.</p></div>
+  <a class="btn" href="{{ url_for('reports_page') }}">Download reports</a>
+</div>
+
+{% if strip.kill %}<div class="callout callout-danger" role="alert"><b>Kill switch is engaged.</b> New entries are blocked and open positions are being squared off. <a href="{{ url_for('risk') }}">Manage on Risk &amp; safety</a>.</div><br>{% endif %}
+{% if gate.armed %}<div class="callout callout-danger" role="alert"><b>Live trading is armed for today</b> (lane {{ gate.lane }}, max {{ gate.max_live_lots }} lot). Real orders can be placed on your Upstox account. <a href="{{ url_for('risk') }}">Disarm</a></div><br>{% endif %}
+
+<section class="sources" aria-label="Results by data source">
+  {% for s in summaries %}{% set m = s.m %}
+  <article class="panel rail rail-{{ s.source }}">
+    <div class="src-head">{{ badge(s.source) }}<a href="{{ url_for('performance', source=s.source) }}">Details</a></div>
+    <div>
+      {% if s.source == 'live' and m.trades %}
+      <div class="big {{ m.net|pnl }}">{{ m.net|inr(0, true) }}</div>
+      <div class="muted">net after {{ m.charges|inr }} charges, {{ m.trades }} closed trades, {{ m.first_day }} to {{ m.last_day }}</div>
+      <dl class="kv">
+        <dt>Win rate</dt><dd>{{ m.win_rate|num(1) }}%</dd>
+        <dt>Profit factor</dt><dd>{{ m.profit_factor|num(2) if m.profit_factor is not none else '—' }}</dd>
+        <dt>Average trade</dt><dd class="{{ m.avg_trade|pnl }}">{{ m.avg_trade|inr(0, true) }}</dd>
+        <dt>Max drawdown</dt><dd>{{ m.drawdown.amount|inr }}</dd>
+        {% if m.open_positions %}<dt>Open positions</dt><dd>{{ m.open_positions }}</dd>{% endif %}
+      </dl>
+      {% if m.sample_note %}<span class="sample">{{ m.sample_note }}</span>{% endif %}
+      {% elif s.rows %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>{{ 'Book' if s.source == 'paper' else 'Result set' }}</th><th class="n">Trades</th><th class="n">Net</th><th class="n">PF</th></tr></thead>
+        <tbody>{% for r in s.rows[:6] %}<tr><td>{{ r.key }}{% if not r.sample_ok %} <abbr title="fewer than 30 closed trades: too few to judge">*</abbr>{% endif %}</td><td class="n">{{ r.trades }}</td><td class="n {{ r.net|pnl }}">{{ r.net|inr(0, true) }}</td><td class="n">{{ r.profit_factor|num(2) if r.profit_factor is not none else '—' }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% if s.rows|length > 6 %}<p class="note">{{ s.rows|length - 6 }} more on <a href="{{ url_for('backtests' if s.source == 'backtest' else 'paper') }}">{{ 'Backtests' if s.source == 'backtest' else 'Paper trading' }}</a>.</p>{% endif %}
+      <p class="note">{{ 'Lanes v1, v2 and v3 trade the same signals' if s.source == 'paper' else 'Sets are alternative variants over the same history' }}, so their results are shown side by side and never added up. Net is after charges.{% if s.rows|rejectattr('sample_ok')|list %} * Fewer than 30 closed trades: too few to judge.{% endif %}</p>
+      {% elif s.source == 'live' %}
+      {{ empty("No live trades recorded", "Orders have only gone to the simulated paper broker. Live results appear here once live trading is armed and orders fill at Upstox.") }}
+      {% elif s.source == 'backtest' %}
+      {{ empty("No backtest results yet", "Run one from Backtests; its trades are read from output/*_trades.csv.") }}
+      {% else %}
+      {{ empty("No paper trades yet", "The scanner and movement service record simulated trades here as they happen.") }}
+      {% endif %}
+    </div>
+    {% if s.source == 'backtest' %}<p class="note">Option prices are modelled (Black-Scholes, IV = India VIX). Not a forecast of live results.</p>{% endif %}
+    {% if s.source == 'paper' %}<p class="note">Fills are simulated at the quoted ask/bid plus slippage. Real fills can be worse.</p>{% endif %}
+  </article>
+  {% endfor %}
+</section>
+
+<div class="grid g2 ov-lower">
+  <section class="panel rail rail-paper">
+    <h2>Today's risk usage</h2>
+    {% if lanes %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Lane</th><th class="n">Day P&amp;L</th><th class="n">Loss limit</th><th class="n">Trades</th><th class="n">Open</th><th>Entries</th></tr></thead>
+      <tbody>{% for l in lanes %}<tr><td>Scanner {{ l.lane }}</td><td class="n">{{ money(l.day_pnl, true) }}</td><td class="n">{{ l.limit|inr }}</td><td class="n">{{ l.trades_total }}</td><td class="n">{{ l.open_positions }}</td>
+      <td>{% if l.halted %}<span class="status-fail">halted: {{ l.halt_reason }}</span>{% elif l.entries_allowed %}allowed{% else %}blocked{% endif %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}{{ empty("No risk state", "Start the scanner (python -m src.main) to see today's usage.") }}{% endif %}
+    <p class="note">Updated {{ state.generated_at|age }}. Limits and history on <a href="{{ url_for('risk') }}">Risk &amp; safety</a>.</p>
+  </section>
+
+  <section class="panel rail rail-paper">
+    <h2>Open positions</h2>
+    {% set any_open = today|selectattr('qty_open')|list %}
+    {% if any_open or open_mv %}
+    <div class="table-wrap"><table><thead><tr><th>Book</th><th>Contract</th><th class="n">Qty</th><th class="n">Entry</th><th class="n">Open P&amp;L</th></tr></thead><tbody>
+      {% for t in any_open %}<tr><td>Scanner {{ t.lane }}</td><td>{{ t.symbol }}</td><td class="n">{{ t.qty_open }}</td><td class="n">{{ t.entry_price|num }}</td><td class="n">{{ money(t.open_pnl, true) }}</td></tr>{% endfor %}
+      {% for t in open_mv %}{% if not t.book_key.startswith('scanner') %}<tr><td>{{ t.book }}</td><td>{{ t.symbol }}</td><td class="n">{{ t.qty }}</td><td class="n">{{ t.entry_price|num }}</td><td class="n">{{ money(t.open_pnl, true) }}</td></tr>{% endif %}{% endfor %}
+    </tbody></table></div>
+    {% else %}{{ empty("No open paper positions", "Positions appear here while a book holds a contract.") }}{% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Latest alerts</h2>
+    {% if alerts %}
+    <div class="table-wrap"><table><thead><tr><th>Time</th><th>Index</th><th>Signal</th><th class="n">Score</th></tr></thead><tbody>
+      {% for a in alerts %}<tr><td>{{ a.time|t }}</td><td>{{ a.index or a.idx }}</td><td>{{ a.direction }} {{ a.stage or a.kind }}</td><td class="n">{{ a.score|num(1) }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}{{ empty("No alerts this session", state.status or "The scanner publishes alerts during market hours.") }}{% endif %}
+    {% if events.note %}<p class="note">{{ events.note }}</p>{% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Latest orders</h2>
+    {% if orders %}
+    <div class="table-wrap"><table><thead><tr><th>Created</th><th>Source</th><th>Order</th><th class="n">Filled</th><th>Status</th></tr></thead><tbody>
+      {% for o in orders %}<tr><td class="nowrap">{{ o.created|t }}</td><td>{{ badge(o.source) }}</td><td>{{ o.side }} {{ o.order_type }} <span class="sub">{{ o.purpose }}</span></td><td class="n">{{ o.filled }}/{{ o.quantity }} @ {{ o.avg_price|num }}</td><td>{{ o.status }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}{{ empty("No orders yet", "The execution engine journals every order it sends to data/execution.db.") }}{% endif %}
+    <p class="note"><a href="{{ url_for('broker') }}">Full order journal and broker positions</a></p>
+  </section>
+</div>
+{% endblock %}

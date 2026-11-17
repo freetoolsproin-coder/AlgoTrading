@@ -1,0 +1,51 @@
+ python -m src.main
+
+.venv\Scripts\python.exe -m src.stocks
+
+http://127.0.0.1:8504/
+
+python -m src.fno --mock
+
+python -m src.fno
+
+python -m src.desk
+
+
+Index scanner running 		· http://127.0.0.1:8502
+Stock options service running 	· http://127.0.0.1:8504
+F&O engine offline 		· http://127.0.0.1:8520
+
+
+Every trading day
+
+Log in to Upstox. The token expires daily.
+   python -m src.broker.auth
+
+Open the link it prints and log in, then paste the address you land on back into the terminal.
+
+Start the strategy service. This is the movement service, and it runs all 54 strategies as paper trades.
+   python -m src.movement
+http://127.0.0.1:8503 shows the movement triggers and the paper trades.
+http://127.0.0.1:8503/strategies lists every strategy with its latest signal.
+http://127.0.0.1:8503/ml lets you retrain the model and shows its live up/down predictions.
+Optional: start the scanner in a second terminal.
+   python -m src.main
+
+Its dashboard is at http://127.0.0.1:8502.
+
+Optional: start the console in a third terminal.
+   python -m src.console
+
+It’s at http://127.0.0.1:8510 and shows performance, trades, risk, backtests and the kill switch.
+
+Without a token or outside market hours: python -m src.movement --mock runs everything on fake data.
+
+Useful extras
+
+List the strategies: python -m src.movement.strategies --list shows each one’s CE/PE rules and settings.
+Backtest the strategies: python -m src.movement.backtest --instrument NIFTY --strategies all takes about an hour for all of them. Name a few instead (--strategies supertrend,orb) for a quick run.
+Switch a strategy off: set enabled = false in its [STRATEGY_<NAME>] section of config\scanner.ini.
+Stop: press Ctrl+C in the terminal.
+Emergency stop for trading: create a file named KILL_SWITCH in the project folder, or use the console’s kill-switch button.
+
+Everything trades on paper only; nothing places real orders. If a service shows an error when it starts, paste it here.

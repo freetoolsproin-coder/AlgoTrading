@@ -1,0 +1,62 @@
+{% extends "base.html" %}{% from "_m.html" import badge, money, empty with context %}
+{% block title %}Broker monitor{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Broker monitor</h1><p>Your Upstox account, read with GET requests only. This page cannot place, change or cancel orders.</p></div>
+<a class="btn" href="{{ url_for('broker', refresh=1) }}">Refresh now</a></div>
+
+<section class="panel rail rail-live">
+  <div class="src-head">{{ badge('live') }}<span class="muted">{% if snap.fetched_at %}fetched {{ snap.fetched_at|t }}{% endif %}</span></div>
+  {% if snap.connected %}
+  <div class="grid g4">
+    <div><div class="muted">Account</div><b>{{ snap.profile.user_name or '—' }}</b> <span class="muted">{{ snap.profile.user_id }}</span></div>
+    <div><div class="muted">Available margin</div><b>{{ snap.funds.available_margin|inr(2) }}</b></div>
+    <div><div class="muted">Used margin</div><b>{{ snap.funds.used_margin|inr(2) }}</b></div>
+    <div><div class="muted">API latency</div><b>{{ snap.latency_ms }} ms</b></div>
+  </div>
+  {% if not snap.funds.ok %}<p class="note status-warn">Funds: {{ snap.funds.message }}</p>{% endif %}
+  {% else %}
+  <div class="callout callout-warn"><b>Not connected: {{ snap.status|replace('_', ' ') }}.</b> {{ snap.message }}</div>
+  {% endif %}
+  <p class="note">Token: {% if snap.token.present %}from {{ snap.token.source }}{% if snap.token.issued %}, issued {{ snap.token.issued|t }}, expires about {{ snap.token.expires|t }}{% if snap.token.expired %} <b class="status-fail">(expired)</b>{% endif %}{% endif %}{% else %}missing{% endif %}.
+  Upstox tokens end at 03:30 the next day; run <code>python -m src.broker.auth</code> each morning.</p>
+</section>
+
+{% if snap.connected %}
+<section class="panel rail rail-live ov-lower"><h2>Positions at the broker</h2>
+  {% if snap.positions.rows %}
+  <div class="table-wrap"><table><thead><tr><th>Symbol</th><th>Product</th><th class="n">Qty</th><th class="n">Avg</th><th class="n">LTP</th><th class="n">Realised</th><th class="n">Unrealised</th><th class="n">P&amp;L</th></tr></thead><tbody>
+  {% for p in snap.positions.rows %}<tr><td>{{ p.symbol }}<span class="sub">{{ p.instrument_key }}</span></td><td>{{ p.product }}</td><td class="n">{{ p.quantity }}</td><td class="n">{{ p.average_price|num }}</td><td class="n">{{ p.last_price|num }}</td><td class="n">{{ money(p.realised, true) }}</td><td class="n">{{ money(p.unrealised, true) }}</td><td class="n">{{ money(p.pnl, true) }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{{ empty("No positions today", snap.positions.message or "The broker reports no intraday positions.") }}{% endif %}
+  <p class="note">Positions here may include trades you placed outside this application. The order engine reconciles its own positions every <code>reconcile_seconds</code>; a mismatch blocks new live entries.</p>
+</section>
+
+<div class="grid g2 ov-lower">
+<section class="panel rail rail-live"><h2>Today's order book</h2>
+  {% if snap.orders.rows %}
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Order</th><th class="n">Qty</th><th class="n">Avg</th><th>Status</th></tr></thead><tbody>
+  {% for o in snap.orders.rows %}<tr><td>{{ o.time|t }}</td><td>{{ o.side }} {{ o.symbol }}<span class="sub">{{ o.type }}{% if o.tag %}, tag {{ o.tag }}{% endif %}</span></td><td class="n">{{ o.filled }}/{{ o.qty }}</td><td class="n">{{ o.avg|num }}</td><td>{{ o.status }}{% if o.message %}<span class="sub">{{ o.message }}</span>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{{ empty("No orders today", snap.orders.message or "") }}{% endif %}
+</section>
+<section class="panel rail rail-live"><h2>Today's trades (fills)</h2>
+  {% if snap.trades.rows %}
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Fill</th><th class="n">Qty</th><th class="n">Price</th></tr></thead><tbody>
+  {% for t in snap.trades.rows %}<tr><td>{{ t.time|t }}</td><td>{{ t.side }} {{ t.symbol }}</td><td class="n">{{ t.qty }}</td><td class="n">{{ t.price|num }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{{ empty("No fills today", snap.trades.message or "") }}{% endif %}
+</section>
+</div>
+{% endif %}
+
+<section class="panel ov-lower">
+  <div class="src-head"><h2>Order engine journal</h2><a class="btn btn-small" href="{{ url_for('report_orders') }}">Download CSV</a></div>
+  <p class="muted">Mode <b>{{ exec.mode or gate.mode }}</b>, broker <b>{{ exec.broker or 'paper' }}</b>, lane {{ exec.lane or gate.lane }}, {{ exec.orders_today or 0 }} orders today{% if exec.last_reconcile %}, last reconciled {{ exec.last_reconcile|t }}{% endif %}.{% if exec.last_problem %} <span class="status-warn">Last problem: {{ exec.last_problem }}</span>{% endif %}</p>
+  {% if orders %}
+  <div class="table-wrap"><table><thead><tr><th>Created</th><th>Source</th><th>Purpose</th><th>Order</th><th class="n">Limit / trigger</th><th class="n">Filled</th><th class="n">Avg</th><th>Status</th><th>Tag</th></tr></thead><tbody>
+  {% for o in orders %}<tr><td class="nowrap">{{ o.created|t }}</td><td>{{ badge(o.source) }}</td><td>{{ o.purpose }}</td><td>{{ o.side }} {{ o.order_type }}<span class="sub">{{ o.instrument_key }}</span></td>
+  <td class="n">{{ o.limit_price|num }}{% if o.trigger_price %} / {{ o.trigger_price|num }}{% endif %}</td><td class="n">{{ o.filled }}/{{ o.quantity }}</td><td class="n">{{ o.avg_price|num }}</td><td>{{ o.status }}{% if o.message %}<span class="sub">{{ o.message }}</span>{% endif %}</td><td><code>{{ o.tag }}</code></td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{{ empty("Journal is empty", "Orders appear here once the order engine sends any (paper or live).") }}{% endif %}
+</section>
+{% endblock %}

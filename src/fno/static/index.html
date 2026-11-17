@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F&amp;O Engine</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header>
+  <div class="brand">F&amp;O Engine <span id="mode" class="pill paper">PAPER</span><span id="mock" class="pill mock" hidden>MOCK DATA</span></div>
+  <div id="status" class="muted">connecting…</div>
+  <button id="kill" class="danger">Kill switch</button>
+</header>
+<nav id="tabs">
+  <button data-tab="dash" class="on">Dashboard</button>
+  <button data-tab="scanner">Scanner</button>
+  <button data-tab="strategies">Strategies</button>
+  <button data-tab="performance">Performance</button>
+  <button data-tab="trades">Trades</button>
+  <button data-tab="backtests">Backtests</button>
+  <button data-tab="system">System</button>
+</nav>
+<div id="banner" class="banner" hidden></div>
+<main>
+  <section id="dash" class="tab on">
+    <div id="cards" class="cards"></div>
+    <div id="risk" class="tiles"></div>
+    <h2>Signals <span class="legend"><i class="dot ce"></i>BUY CE <i class="dot pe"></i>BUY PE <i class="dot wait"></i>WAIT FOR CONFIRMATION <i class="dot none"></i>NO TRADE</span></h2>
+    <div id="signals" class="signals"></div>
+    <h2>Open positions</h2>
+    <div class="scroll"><table id="positions"></table></div>
+    <h2>Closed today</h2>
+    <div class="scroll"><table id="closed"></table></div>
+  </section>
+  <section id="scanner" class="tab">
+    <div class="bar"><input id="filter" placeholder="Filter symbol…" aria-label="Filter symbol">
+      <select id="fstatus" aria-label="Status"><option value="">All statuses</option><option>BUY CE</option><option>BUY PE</option><option>WAIT</option><option>NO TRADE</option></select>
+      <span id="scaninfo" class="muted"></span></div>
+    <h2>Bullish opportunities (BUY CE), ranked</h2><div class="scroll"><table id="rankup"></table></div>
+    <h2>Bearish opportunities (BUY PE), ranked</h2><div class="scroll"><table id="rankdn"></table></div>
+    <h2>All instruments</h2><div class="scroll"><table id="watch"></table></div>
+  </section>
+  <section id="strategies" class="tab">
+    <p class="muted">Each strategy only proposes a trigger. A trade needs the confluence checks and option-premium confirmation as well. Settings are untested starting values; changes apply from the next cycle.</p>
+    <div id="stratlist"></div>
+  </section>
+  <section id="performance" class="tab">
+    <div id="perf" class="tiles"></div>
+    <h2>Equity (net of charges)</h2>
+    <div id="equity" class="chart"></div>
+    <div class="grid2">
+      <div><h2>By strategy</h2><div class="scroll"><table id="pstrategy"></table></div></div>
+      <div><h2>By symbol</h2><div class="scroll"><table id="psymbol"></table></div></div>
+      <div><h2>CE vs PE</h2><div class="scroll"><table id="pside"></table></div></div>
+      <div><h2>Time of day (entry)</h2><div class="scroll"><table id="ptime"></table></div></div>
+    </div>
+  </section>
+  <section id="trades" class="tab">
+    <div class="scroll"><table id="history"></table></div>
+  </section>
+  <section id="backtests" class="tab">
+    <form id="btform" class="bar">
+      <input name="symbols" value="NIFTY" aria-label="Symbols" title="Comma-separated symbols">
+      <input name="from" type="date" aria-label="From"><input name="to" type="date" aria-label="To">
+      <input name="strategies" value="all" aria-label="Strategies" title="all, or comma-separated strategy keys">
+      <label><input name="walk_forward" type="checkbox"> walk-forward</label>
+      <button>Run backtest</button><span id="btjob" class="muted"></span>
+    </form>
+    <div class="grid2 wide"><div><h2>Reports</h2><div class="scroll"><table id="btlist"></table></div></div>
+      <div id="btreport"></div></div>
+  </section>
+  <section id="system" class="tab">
+    <div id="health" class="tiles"></div>
+    <h2>Recent errors</h2>
+    <div class="scroll"><table id="errors"></table></div>
+  </section>
+</main>
+<div id="tip" class="tip" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

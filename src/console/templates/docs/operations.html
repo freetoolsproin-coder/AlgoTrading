@@ -1,0 +1,18 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<h2>Each trading morning</h2>
+<ol><li>Run the Upstox login: <code>python -m src.broker.auth</code>.</li>
+<li>Start the scanner (<code>python -m src.main</code>) and, if you use it, the movement service.</li>
+<li>Open the console's <b>System health</b> page: the token, broker API, market data and scanner heartbeat should be OK by 09:20.</li>
+<li>Check <b>Risk &amp; safety</b>: kill switch released, limits as expected, event calendar populated for the coming days.</li>
+<li>Only if you intend to trade live today: arm in a terminal with <code>python -m src.execution.live_gate --arm</code>.</li></ol>
+<h2>During the session</h2>
+<ul><li>The status bar refreshes every 20 seconds. A stale scanner, an engaged kill switch or an armed gate is always visible there.</li>
+<li>If anything looks wrong, engage the kill switch first and investigate second.</li></ul>
+<h2>After the close</h2>
+<ul><li>Review the day on <b>Performance</b> and <b>Trade blotter</b>; download the CSV for your records.</li>
+<li>Compare live fills against the broker's contract note.</li>
+<li>Disarm happens automatically at midnight; disarm earlier from the Risk page if you are done.</li></ul>
+<h2>Weekly</h2>
+<ul><li>Verify the audit chain. Back up <code>data/</code> (it holds all trade history and the console database).</li>
+<li>Re-run backtests after any settings change, and judge changes on out-of-sample results.</li></ul>
+{% endblock %}

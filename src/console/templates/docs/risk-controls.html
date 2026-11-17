@@ -1,0 +1,13 @@
+{% extends "docs/_layout.html" %}{% block doc %}
+<p>Risk limits live in <code>[RISK]</code> and <code>[TRADE_PLAN]</code> of <code>config/scanner.ini</code> and are enforced by the scanner on every entry. The console shows them and today's usage; it does not change them.</p>
+<h2>Per trade</h2>
+<ul><li>Risk per trade is a percentage of capital. Size = floor(budget / risk per lot) whole lots; a trade is skipped when one lot risks too much.</li>
+<li>The premium stop is capped at <code>max_premium_loss_pct</code>; entries need at least <code>min_rr</code> reward to risk after costs.</li></ul>
+<h2>Per day and week</h2>
+<ul><li>Daily loss limit (realised + open; the tighter of rupees and percent), weekly loss limit, trades per index and per session, open positions, losing-streak stop, same-direction and correlated exposure (NIFTY and SENSEX on the same side count as one bet), open premium and lots per expiry.</li>
+<li>Session gates: no entries before the watch window or after <code>last_entry</code>, forced square-off, an expiry-day cut-off, a VIX ceiling, a gap filter and the event calendar.</li></ul>
+<h2>Never</h2>
+<p>No martingale, no averaging down, no size increase after a loss. Sizing is only ever reduced to fit a limit.</p>
+<h2>Kill switch</h2>
+<p>A file named <code>KILL_SWITCH</code> in the project folder blocks new entries and squares off open positions within one cycle. Engage it from the Risk page (any user) or create the file by hand; releasing it from the console needs an admin and the word RELEASE.</p>
+{% endblock %}

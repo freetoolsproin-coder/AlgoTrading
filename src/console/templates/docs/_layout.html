@@ -1,0 +1,11 @@
+{% extends "base.html" if me else "public.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="doc">
+  <nav class="doc-nav" aria-label="Documentation">
+    {% for key, label in doc_pages.items() %}<a href="{{ url_for('docs', page=key) }}" {% if key == page %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    <a href="{{ url_for('faq') }}">FAQ</a><a href="{{ url_for('disclosures') }}">Risk disclosure</a>
+  </nav>
+  <article class="prose"><h1>{{ title }}</h1>{% block doc %}{% endblock %}</article>
+</div>
+{% endblock %}

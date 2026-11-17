@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIFTY 50 Stock Options</title>
+<link rel="stylesheet" href="/static/stocks.css">
+</head>
+<body>
+<header>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <h1>NIFTY 50 Stock Options</h1><span id="status" class="pill">loading</span><span id="when" class="muted small"></span>
+  </div>
+  <div class="search"><input id="q" placeholder="Search a stock for its research report…" autocomplete="off"
+    aria-label="Search stock"><div class="suggest"></div></div>
+</header>
+<main>
+  <h2 style="margin-top:4px">Top picks <span class="muted small" id="pk-cfg"></span></h2>
+  <div id="nifty" class="small muted" style="margin:-2px 0 8px"></div>
+  <div id="picks" class="picks"></div>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">Valid setups</div><div class="v" id="t-valid">–</div></div>
+    <div class="tile"><div class="k">Watching</div><div class="v" id="t-watch">–</div></div>
+    <div class="tile"><div class="k">No trade</div><div class="v" id="t-none">–</div></div>
+    <div class="tile"><div class="k">Paper trades today</div><div class="v" id="t-trades">–</div></div>
+    <div class="tile"><div class="k">Paper P&amp;L (net)</div><div class="v" id="t-pnl">–</div></div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button data-f="PICK">Top picks</button><button data-f="actionable" class="on">Valid + watch</button><button data-f="VALID">Valid only</button>
+    <button data-f="CE">CE</button><button data-f="PE">PE</button><button data-f="all">All 50</button>
+    <span class="muted small" style="margin-left:auto">Click a row for the checks · click a symbol for its report</span>
+  </div>
+  <div class="card"><table id="plans"><thead><tr>
+    <th>Stock</th><th class="n">LTP</th><th>Signal</th><th class="n">Score</th><th>Contract</th>
+    <th class="n">Buy at</th><th class="n">Stop-loss</th><th class="n">Target 1</th><th class="n">Target 2</th>
+    <th class="n">Spot SL / T1 / T2</th><th class="n">R:R</th><th class="n">Lot · capital</th><th class="n">Risk / lot</th><th>Why</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>Paper book (today)</h2>
+  <div class="card"><table id="book"><thead><tr>
+    <th>Contract</th><th>Opened</th><th class="n">Entry</th><th class="n">Stop</th><th class="n">T1</th><th class="n">T2</th>
+    <th class="n">LTP</th><th>Status</th><th class="n">P&amp;L</th><th>Events</th></tr></thead><tbody></tbody></table></div>
+
+
+  <h2 id="pb">Before the breakout <span class="muted small">– NIFTY 50 stocks coiling under resistance (CE / buy) or above support (PE / short)</span></h2>
+  <div class="tiles">
+    <div class="tile"><div class="k">Ready (set trigger)</div><div class="v" id="b-ready">–</div></div>
+    <div class="tile"><div class="k">Triggered / confirmed</div><div class="v" id="b-conf">–</div></div>
+    <div class="tile"><div class="k">Watching</div><div class="v" id="b-watch">–</div></div>
+    <div class="tile"><div class="k">Breakout trades today</div><div class="v" id="b-trades">–</div></div>
+    <div class="tile"><div class="k">P&amp;L equity · option</div><div class="v" id="b-pnl">–</div></div>
+  </div>
+  <div class="filters" id="bfilters">
+    <button data-f="act" class="on">Ready + confirmed</button><button data-f="watch">+ Watching</button>
+    <button data-f="CE">CE / long</button><button data-f="PE">PE / short</button><button data-f="all">Everything</button>
+    <span class="muted small" style="margin-left:auto" id="b-cfg"></span>
+  </div>
+  <div class="card"><table id="bplans"><thead><tr>
+    <th>Stock</th><th>Stage</th><th class="n">Score</th><th>Level</th><th class="n">Dist</th>
+    <th class="n">Trigger</th><th class="n">Stop</th><th class="n">T1</th><th class="n">T2</th>
+    <th>Intraday equity</th><th>Option</th><th class="n">Opt buy · SL · T1 · T2</th><th>Why</th>
+  </tr></thead><tbody></tbody></table></div>
+  <h3>Breakout paper book (today)</h3>
+  <div class="card"><table id="bbook"><thead><tr>
+    <th>Stock</th><th>Opened</th><th class="n">Entry</th><th class="n">Stop</th><th class="n">T1</th><th class="n">T2</th>
+    <th class="n">Spot</th><th>Status</th><th class="n">Equity P&amp;L</th><th>Option</th><th class="n">Option P&amp;L</th><th>Events</th></tr></thead><tbody></tbody></table></div>
+  <h3>Alerts</h3>
+  <div class="card"><table id="balerts"><tbody></tbody></table></div>
+  <p class="note">READY means the stock is coiled next to a level: place the trigger (buy-stop above for CE, sell-stop below for
+    PE), do not enter early. A trade is taken (paper) only when a completed 15-minute bar closes beyond the level with a strong
+    body and 1.5x volume <i>after</i> a READY on that level. Stop sits behind the base, T1 / T2 are 1.5 R / 2.5 R pulled in
+    before the next level; after T1 the stop moves to cost. Option premiums are delta-gamma estimates at the trigger.
+    Paper trading only; not investment advice.</p>
+
+  <p class="note">Plans use completed 15-minute bars. Stop-loss sits behind the latest swing / Supertrend (0.6–1.8 ATR);
+    targets are 1.5 R and 2.5 R pulled in before the nearest resistance or support, and a plan is VALID only when the
+    reward:risk still holds on the option premium after charges. Premium levels are delta-gamma estimates – the spot
+    levels are the primary trigger. Paper trading only; not investment advice.</p>
+</main>
+<script src="/static/search.js"></script>
+<script>
+setupSearch(document.getElementById("q"));
+let state = null, filter = "actionable", open = new Set();
+document.querySelectorAll("#filters button").forEach(b => b.onclick = () => {
+  filter = b.dataset.f; document.querySelectorAll("#filters button").forEach(x=>x.classList.toggle("on", x===b)); render();
+});
+function keep(p){
+  if(filter==="all") return true;
+  if(filter==="actionable") return p.status!=="NO_TRADE";
+  if(filter==="VALID") return p.status==="VALID";
+  if(filter==="PICK") return !!(p.precision && p.precision.ok);
+  return p.direction===filter && p.status!=="NO_TRADE";
+}
+function render(){
+  if(!state) return;
+  const st = document.getElementById("status");
+  st.textContent = state.mock ? "MOCK DATA" : state.status; st.className = "pill " + (state.mock ? "mock" : state.status==="live" ? "live" : "warn");
+  document.getElementById("when").textContent = state.generated_at ? "updated " + state.generated_at.slice(11,16) + (state.duration? ` · scan ${state.duration}s`:"") : "first scan running…";
+  document.getElementById("t-valid").textContent = state.counts.VALID ?? 0;
+  document.getElementById("t-watch").textContent = state.counts.WATCH ?? 0;
+  document.getElementById("t-none").textContent = state.counts.NO_TRADE ?? 0;
+  const book = state.book || {trades:[]};
+  document.getElementById("t-trades").textContent = `${book.trades.length} (${book.open} open)`;
+  const pnl = document.getElementById("t-pnl"); pnl.textContent = rs(book.pnl); pnl.className = "v " + cls(book.pnl);
+
+  renderPicks();
+  const tb = document.querySelector("#plans tbody"); tb.replaceChildren();
+  const rows = state.plans.filter(keep);
+  if(!rows.length){ const tr=el("tr"); const td=el("td","empty", state.generated_at ? "Nothing matches this filter right now." : "Scanning the NIFTY 50…"); td.colSpan=14; tr.append(td); tb.append(tr); }
+  for(const p of rows){
+    const o = p.option || {}, s = p.spot || {};
+    const tr = el("tr","main");
+    const name = el("td"); const a = el("a","b",p.symbol); a.href="/report/"+encodeURIComponent(p.symbol); a.onclick=e=>e.stopPropagation();
+    name.append(a, el("div","muted small", p.industry || "")); tr.append(name);
+    const ltp = el("td","n"); ltp.append(el("div",null,fmt(p.ltp)), el("div","small "+cls(p.change_pct), p.change_pct==null?"":sgn(p.change_pct)+"%")); tr.append(ltp);
+    const sig = el("td"); sig.append(el("span","tag "+p.status, p.status.replace("_"," ")));
+    if(p.direction){ sig.append(document.createTextNode(" ")); sig.append(el("span","tag "+p.direction, p.direction)); }
+    if(p.precision) sig.append(el("div","small "+(p.precision.ok?"up b":"muted"), p.precision.ok ? `★ pick ${fmt(p.precision.rank,0)}` : "not a pick"));
+    tr.append(sig);
+    tr.append(el("td","n "+cls(p.score), sgn(p.score)));
+    tr.append(el("td","small", o.contract || "–"));
+    tr.append(el("td","n b", fmt(o.entry)), el("td","n down", fmt(o.stop)), el("td","n up", fmt(o.t1)), el("td","n up", fmt(o.t2)));
+    tr.append(el("td","n small", p.spot ? `${fmt(s.stop)} / ${fmt(s.t1)} / ${fmt(s.t2)}` : "–"));
+    tr.append(el("td","n", o.rr!=null ? fmt(o.rr) : s.rr1!=null ? fmt(s.rr1) : "–"));
+    tr.append(el("td","n small", o.lot_size ? `${o.lot_size} · ${rs(o.capital)}` : "–"));
+    tr.append(el("td","n small", rs(o.risk_rs)));
+    tr.append(el("td","small muted", p.precision && !p.precision.ok ? "valid, not a pick: " + p.precision.failed.join(", ").toLowerCase() : p.reason));
+    tr.onclick = () => { open.has(p.symbol) ? open.delete(p.symbol) : open.add(p.symbol); render(); };
+    tb.append(tr);
+    if(open.has(p.symbol)){
+      const d = el("tr","detail"), td = el("td"); td.colSpan = 14;
+      const wrap = el("div","grid2");
+      const c1 = el("div"); c1.append(el("b",null,"Checks"));
+      const ul = el("ul","checks"); (p.checks||[]).forEach(c=>ul.append(el("li", c.ok?"ok":"bad", `${c.name}: ${c.detail}`)));
+      if(!(p.checks||[]).length) ul.append(el("li","muted",p.reason)); c1.append(ul);
+      (p.notes||[]).forEach(n=>c1.append(el("div","note","• "+n)));
+      if(p.precision){ c1.append(el("b",null,"Precision checks (rank "+fmt(p.precision.rank)+")"));
+        const ul3 = el("ul","checks"); p.precision.checks.forEach(c=>ul3.append(el("li", c.ok?"ok":"bad", `${c.name}: ${c.detail}`))); c1.append(ul3); }
+      const c2 = el("div"); c2.append(el("b",null,"Score"));
+      const ul2 = el("ul","checks"); (p.components||[]).forEach(c=>ul2.append(el("li",null,`${sgn(c.points)}  ${c.name} (${c.value}) – ${c.note}`))); c2.append(ul2);
+      if(o.delta!=null) c2.append(el("div","note", `Delta ${fmt(o.delta)} · IV ${fmt(o.iv)}% · theta ${fmt(o.theta)}/day · reward T1 ${rs(o.reward1_rs)}, T2 ${rs(o.reward2_rs)} per lot`));
+      wrap.append(c1,c2); td.append(wrap); d.append(td); tb.append(d);
+    }
+  }
+  const bb = document.querySelector("#book tbody"); bb.replaceChildren();
+  if(!book.trades.length){ const tr=el("tr"); const td=el("td","empty","No paper trades yet today – a VALID plan inside the entry window opens one."); td.colSpan=10; tr.append(td); bb.append(tr); }
+  for(const t of book.trades){
+    const tr = el("tr");
+    const c = el("td"); c.append(el("span","tag "+t.kind,t.kind), document.createTextNode(" "+t.contract)); tr.append(c);
+    tr.append(el("td","small", t.opened.slice(11,16)), el("td","n",fmt(t.entry)), el("td","n down",fmt(t.stop)),
+              el("td","n up",fmt(t.t1)), el("td","n up",fmt(t.t2)), el("td","n",fmt(t.exit ?? t.ltp)),
+              el("td","small b", t.status.replace(/_/g," ")), el("td","n b "+cls(t.pnl), rs(t.pnl)),
+              el("td","small muted", (t.events||[]).slice(-2).join(" · ")));
+    bb.append(tr);
+  }
+}
+
+function renderPicks(){
+  const pc = state.precision || {}, n = state.nifty || {};
+  document.getElementById("pk-cfg").textContent = pc.enabled
+    ? `– VALID plans that also pass the precision checks, best first · max ${pc.max_picks_per_day} paper trades a day, ${pc.max_open} open, new picks until ${pc.last_entry}`
+    : "– precision mode is off ([STOCK_PRECISION] enabled = false)";
+  const nb = document.getElementById("nifty");
+  nb.textContent = n.available ? `NIFTY bias ${n.bias>0?"+":""}${n.bias} of ±3 (${n.bias>=2?"CE side":n.bias<=-2?"PE side":"mixed – few picks expected"}): ` +
+    n.votes.map(v=>`${v.name} ${v.value}`).join(" · ") : "NIFTY context unavailable – no picks without it";
+  const box = document.getElementById("picks"); box.replaceChildren();
+  const picks = state.plans.filter(p => p.precision && p.precision.ok);
+  const taken = new Set(((state.book||{}).trades||[]).map(t=>t.symbol));
+  if(!picks.length){ box.append(el("div","card empty", state.generated_at ? "No plan passes every precision check right now. Fewer, cleaner trades is the point – check again next cycle." : "Scanning…")); return; }
+  picks.forEach((p,i) => {
+    const o = p.option, s = p.spot, c = el("div","pick card "+p.direction);
+    const head = el("div","pick-head");
+    const a = el("a","b",p.symbol); a.href="/report/"+encodeURIComponent(p.symbol);
+    head.append(el("span","rank","#"+(i+1)), a, el("span","tag "+p.direction,p.direction), el("span","muted small","rank "+fmt(p.precision.rank)));
+    if(taken.has(p.symbol)) head.append(el("span","pill live","paper trade open"));
+    c.append(head, el("div","contract", o.contract));
+    const g = el("div","pick-grid");
+    [["Buy at",o.entry,""],["Stop-loss",o.stop,"down"],["Target 1",o.t1,"up"],["Target 2",o.t2,"up"]].forEach(([k,v,cl])=>{
+      const d = el("div"); d.append(el("div","k",k), el("div","v "+cl, fmt(v))); g.append(d); });
+    c.append(g);
+    c.append(el("div","small muted", `Spot SL ${fmt(s.stop)} · T1 ${fmt(s.t1)} · T2 ${fmt(s.t2)} · R:R ${fmt(o.rr)} · lot ${o.lot_size} · capital ${rs(o.capital)} · risk ${rs(o.risk_rs)}/lot`));
+    box.append(c);
+  });
+}
+
+let bfilter = "act", bopen = new Set();
+document.querySelectorAll("#bfilters button").forEach(b => b.onclick = () => {
+  bfilter = b.dataset.f; document.querySelectorAll("#bfilters button").forEach(x=>x.classList.toggle("on", x===b)); renderBreakout();
+});
+const ACT = ["READY","TRIGGERED","CONFIRMED"];
+function bkeep(x){
+  if(bfilter==="all") return true;
+  if(bfilter==="act") return ACT.includes(x.stage);
+  if(bfilter==="watch") return ACT.includes(x.stage) || x.stage==="WATCH";
+  return x.side===bfilter && (ACT.includes(x.stage) || x.stage==="WATCH");
+}
+function renderBreakout(){
+  const b = state && state.breakout; if(!b) { document.getElementById("pb").style.display="none"; return; }
+  const c = b.counts || {};
+  document.getElementById("b-ready").textContent = c.READY ?? 0;
+  document.getElementById("b-conf").textContent = (c.TRIGGERED||0) + (c.CONFIRMED||0);
+  document.getElementById("b-watch").textContent = c.WATCH ?? 0;
+  const bk = b.book || {trades:[]};
+  document.getElementById("b-trades").textContent = `${bk.trades.length} (${bk.open} open)`;
+  const pn = document.getElementById("b-pnl"); pn.textContent = `${rs(bk.eq_pnl)} · ${rs(bk.opt_pnl)}`; pn.className = "v " + cls(bk.eq_pnl);
+  const cf = b.config || {};
+  document.getElementById("b-cfg").textContent = `READY ≥ ${cf.ready_score} within ${cf.ready_atr} ATR · entry on ${cf.entry_mode} · risk ${cf.risk_pct}% of ${rs(cf.capital)} · ${cf.entry_start}-${cf.entry_end}`;
+  const tb = document.querySelector("#bplans tbody"); tb.replaceChildren();
+  const rows = (b.items||[]).filter(bkeep);
+  if(!rows.length){ const tr=el("tr"); const td=el("td","empty", b.generated_at ? "No stock is coiled at a level right now." : "Scanning…"); td.colSpan=13; tr.append(td); tb.append(tr); }
+  for(const x of rows){
+    const p = x.plan || {}, e = x.equity || {}, o = x.option || {};
+    const tr = el("tr","main");
+    const name = el("td"); const a = el("a","b",x.symbol); a.href="/report/"+encodeURIComponent(x.symbol); a.onclick=ev=>ev.stopPropagation();
+    name.append(a, el("div","small "+cls(x.change_pct), x.ltp!=null ? `${fmt(x.ltp)} ${x.change_pct==null?"":sgn(x.change_pct)+"%"}` : "")); tr.append(name);
+    const st = el("td"); st.append(el("span","tag stage-"+x.stage, x.stage)); st.append(document.createTextNode(" ")); st.append(el("span","tag "+x.side, x.side));
+    if(x.tradable) st.append(el("div","small up","✓ all checks"));
+    tr.append(st);
+    tr.append(el("td","n b", fmt(x.score)));
+    tr.append(el("td","small", `${x.zone||"–"} ${x.level!=null?"@ "+fmt(x.level):""}`));
+    tr.append(el("td","n small", x.dist_atr!=null ? `${fmt(x.dist_atr)} ATR` : "–"));
+    tr.append(el("td","n b", fmt(p.trigger)), el("td","n down", fmt(p.stop)), el("td","n up", fmt(p.t1)), el("td","n up", fmt(p.t2)));
+    tr.append(el("td","small", e.qty ? `${e.action} ${e.qty} · risk ${rs(e.risk_rs)} · ${fmt(e.rr)} R` : "–"));
+    tr.append(el("td","small", o.contract || "–"));
+    tr.append(el("td","n small", o.contract ? `${fmt(o.entry)} · ${fmt(o.stop)} · ${fmt(o.t1)} · ${fmt(o.t2)}` : "–"));
+    tr.append(el("td","small muted", x.reason || ""));
+    const key = x.symbol + x.side;
+    tr.onclick = () => { bopen.has(key) ? bopen.delete(key) : bopen.add(key); renderBreakout(); };
+    tb.append(tr);
+    if(bopen.has(key)){
+      const d = el("tr","detail"), td = el("td"); td.colSpan = 13;
+      const wrap = el("div","grid2");
+      const c1 = el("div"); c1.append(el("b",null,"Checks"));
+      const ul = el("ul","checks"); [...(x.checks||[]), ...(x.option_checks||[])].forEach(k=>ul.append(el("li", k.ok?"ok":"bad", `${k.name}: ${k.detail}`)));
+      c1.append(ul);
+      if(p.trigger!=null) c1.append(el("div","note", `Stop: ${p.stop_note}. T1: ${p.t1_note}. Risk ${fmt(p.risk)} (${fmt(p.risk_atr)} ATR). Measured move ${p.measured_move ?? "–"}. Next level ${p.next_level ? p.next_level.name+" "+fmt(p.next_level.value) : "–"}.`));
+      if(x.confirmation) c1.append(el("div","note", `Breakout bar: body ${x.confirmation.body_pct}% · close at ${x.confirmation.close_pos_pct}% · volume ${fmt(x.confirmation.volume_x)}x · ${fmt(x.confirmation.beyond_atr)} ATR beyond`));
+      if(x.ready_since) c1.append(el("div","note", "READY since " + x.ready_since.slice(11,16)));
+      (x.notes||[]).forEach(n=>c1.append(el("div","note","• "+n)));
+      const c2 = el("div"); c2.append(el("b",null,"Score " + fmt(x.score) + " / 100"));
+      const fam = x.families || {}; c2.append(el("div","small muted", Object.entries(fam).map(([k,v])=>`${k} ${v}`).join(" · ") + ((x.no_data||[]).length ? ` · no data: ${x.no_data.join(", ")}` : "")));
+      const ul2 = el("ul","checks"); (x.components||[]).forEach(k=>ul2.append(el("li", k.points<0?"bad":null, `${sgn(k.points)}  ${k.name} – ${k.note}`))); c2.append(ul2);
+      if(o.contract) c2.append(el("div","note", `Option now ${fmt(o.price_now)} · delta ${fmt(o.delta)} · IV ${fmt(o.iv)}% · lot ${o.lot_size} · risk ${rs(o.risk_rs)} · reward T1 ${rs(o.reward1_rs)} (${fmt(o.rr)} R)`));
+      if(e.qty) c2.append(el("div","note", `Equity: ${e.order}, ${e.qty} shares, margin ~${rs(e.margin)}, reward T1 ${rs(e.reward1_rs)} / T2 ${rs(e.reward2_rs)}`));
+      wrap.append(c1,c2); td.append(wrap); d.append(td); tb.append(d);
+    }
+  }
+  const bb = document.querySelector("#bbook tbody"); bb.replaceChildren();
+  if(!bk.trades.length){ const tr=el("tr"); const td=el("td","empty","No breakout trades yet today."); td.colSpan=12; tr.append(td); bb.append(tr); }
+  for(const t of bk.trades){
+    const tr = el("tr");
+    const n = el("td"); n.append(el("span","tag "+t.side,t.side), document.createTextNode(" "+t.symbol)); tr.append(n);
+    tr.append(el("td","small", t.opened.slice(11,16)), el("td","n",fmt(t.entry_spot)), el("td","n down",fmt(t.stop)),
+      el("td","n up",fmt(t.t1)), el("td","n up",fmt(t.t2)), el("td","n",fmt(t.exit_spot ?? t.spot)),
+      el("td","small b", t.status.replace(/_/g," ")), el("td","n b "+cls(t.eq_pnl), `${rs(t.eq_pnl)} (${t.qty} sh)`),
+      el("td","small", t.contract || "–"), el("td","n "+cls(t.opt_pnl), t.contract ? rs(t.opt_pnl) : "–"),
+      el("td","small muted", (t.events||[]).slice(-2).join(" · ")));
+    bb.append(tr);
+  }
+  const ab = document.querySelector("#balerts tbody"); ab.replaceChildren();
+  if(!(b.alerts||[]).length){ const tr=el("tr"); const td=el("td","empty","No alerts yet today."); tr.append(td); ab.append(tr); }
+  for(const a of (b.alerts||[])){
+    const tr = el("tr"); tr.append(el("td","small", a.time.slice(11,16)), el("td","small", a.text.split("\n")[0]),
+      el("td","small muted", `trigger ${fmt(a.trigger)} · SL ${fmt(a.stop)} · T1 ${fmt(a.t1)} · T2 ${fmt(a.t2)}${a.contract ? " · "+a.contract : ""}`));
+    ab.append(tr);
+  }
+}
+async function load(){
+  try{ const r = await fetch("/api/state"); if(r.ok){ state = await r.json(); render(); renderBreakout(); } }catch(e){}
+}
+load(); setInterval(load, 15000);
+</script>
+</body>
+</html>

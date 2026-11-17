@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movement Triggers</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--muted:#667085;--line:#e4e7ec;--up:#0a7d45;--down:#c4320a;
+  --upbg:#e7f6ee;--downbg:#fdecea;--accent:#2f5bd3;--warn:#b54708;--warnbg:#fef4e6;--bar:#eef0f3}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--ink:#e8eaf0;--muted:#98a2b3;--line:#262b36;
+  --up:#3ccf8e;--down:#ff7a59;--upbg:#12291f;--downbg:#2e1712;--accent:#7a9cff;--warn:#f5b04c;--warnbg:#2b2112;--bar:#232833}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;
+  border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:2}
+h1{font-size:17px;margin:0}
+h2{font-size:14px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+main{padding:16px 20px;display:grid;gap:16px;max-width:1400px;margin:0 auto}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:var(--bar);color:var(--muted)}
+.pill.live{background:var(--upbg);color:var(--up)} .pill.mock{background:var(--warnbg);color:var(--warn)}
+.status{color:var(--muted);font-size:13px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.idxhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.idxhead .name{font-weight:700;font-size:16px}.idxhead .px{font-size:22px;font-variant-numeric:tabular-nums;font-weight:600}
+.kv{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.kv b{color:var(--ink);font-weight:600}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left} th{font-size:12px;color:var(--muted);font-weight:600}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.meter{position:relative;height:6px;border-radius:3px;background:var(--bar);width:90px;display:inline-block;vertical-align:middle}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
+.meter i.hit{background:var(--warn)}
+.scroll{overflow-x:auto}
+.feed{max-height:460px;overflow:auto}
+.ev{display:grid;grid-template-columns:auto 1fr auto;gap:2px 12px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.ev:first-child.new{animation:flash 1.6s ease-out}
+@keyframes flash{from{background:var(--warnbg)}to{background:transparent}}
+.ev .t{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.ev .m{font-weight:600}.ev .d{grid-column:2/4;color:var(--muted);font-size:12px}
+.q{font-size:11px;padding:1px 7px;border-radius:999px;font-weight:700}
+.q.STRONG{background:var(--downbg);color:var(--down)} .q.CONFIRMED{background:var(--upbg);color:var(--up)}
+.q.UNCONFIRMED{background:var(--bar);color:var(--muted)}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 16px}
+label{display:grid;gap:3px;font-size:12px;color:var(--muted)}
+input,select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button{font:inherit;padding:6px 14px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.msg{font-size:12.5px}.msg.err{color:var(--down)}.msg.ok{color:var(--up)}
+.filters{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+@media (max-width:520px){header,main{padding-left:16px;padding-right:16px}.grid{grid-template-columns:1fr}}
+#toasts{position:fixed;right:16px;top:70px;display:grid;gap:10px;z-index:9;max-width:min(420px,calc(100vw - 32px))}
+.toast{background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.25);animation:pop .25s ease-out}
+.toast.CE{border-color:var(--up)} .toast.PE{border-color:var(--down)} .toast.close{border-color:var(--muted)}
+.toast b{display:block;font-size:15px;margin-bottom:4px} .toast .x{float:right;border:0;background:none;font-size:16px;padding:0 4px}
+@keyframes pop{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}
+.books{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.stat{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:8px;font-size:13px}.stat b{font-variant-numeric:tabular-nums}
+.side{font-weight:700;font-size:11px;padding:1px 6px;border-radius:4px}.side.CE{background:var(--upbg);color:var(--up)}.side.PE{background:var(--downbg);color:var(--down)}
+button.small{padding:2px 8px;font-size:12px}
+.halt{background:var(--warnbg);color:var(--warn);padding:4px 8px;border-radius:6px;font-size:12.5px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <h1>Movement Triggers</h1><span id="mode" class="pill">connecting</span><span id="conn" class="pill">stream</span>
+    <a class="pill" href="/strategies">Strategies</a><a class="pill" href="/ml">Machine learning</a>
+  </div>
+  <div class="status"><span id="status">Waiting for the first cycle…</span> · <span id="clock">-</span></div>
+</header>
+<div id="toasts"></div>
+<main>
+  <div class="grid" id="indices"></div>
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      <h2 style="margin:0">Paper trading <span class="pill mock">simulated - no orders</span></h2>
+      <span><button class="small" id="notifyBtn">Enable browser alerts</button> <label style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="soundOn" checked> sound</label></span>
+    </div>
+    <div class="books" id="books"><div class="muted">Paper trading is off or starting.</div></div>
+    <div class="muted" id="skipped" style="font-size:12px;margin-top:8px"></div>
+  </section>
+  <section class="card" id="stratCard" hidden>
+    <h2>Strategies <span class="muted" style="text-transform:none;font-weight:400" id="stratNote"></span></h2>
+    <div class="scroll"><table id="strat"></table></div>
+  </section>
+  <div class="grid">
+    <section class="card">
+      <h2>Triggers</h2>
+      <div class="filters">
+        <select id="fIndex"><option value="">All indices</option></select>
+        <select id="fQuality"><option value="">All qualities</option><option>STRONG</option><option>CONFIRMED</option><option>UNCONFIRMED</option></select>
+        <span class="muted" id="evCount"></span>
+      </div>
+      <div class="feed" id="feed"><div class="muted">No triggers yet.</div></div>
+    </section>
+    <section class="card">
+      <h2>Rules</h2>
+      <form id="rules"></form>
+      <div class="row">
+        <button class="primary" id="save">Save</button>
+        <button id="reset" title="Back to config/scanner.ini">Reset to ini</button>
+        <button id="evalNow">Evaluate now</button>
+        <button id="test">Send test alert</button>
+        <span class="msg" id="rulesMsg"></span>
+      </div>
+      <p class="muted" style="font-size:12px;margin:10px 0 0">Window maps: <code>minutes:value</code>, e.g. <code>5:0.15, 10:0.25</code>.
+        0 switches a check off. A trigger fires when the move reaches the % or points threshold; it is CONFIRMED when every switched-on
+        check passes, STRONG when also ≥ strong_mult × threshold. Thresholds are starting hypotheses, not tested values.</p>
+    </section>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = (v, d=2) => v == null || !isFinite(v) ? "–" : Number(v).toLocaleString("en-IN",{minimumFractionDigits:d,maximumFractionDigits:d});
+const signed = (v, d=2, suf="") => v == null ? "–" : `<span class="${v>0?"up":v<0?"down":""}">${v>0?"+":""}${num(v,d)}${suf}</span>`;
+let events = [], rules = null, token = "";
+try { token = localStorage.getItem("movementToken") || ""; } catch (e) {}
+
+function headers(){ const h = {"Content-Type":"application/json"}; if (token) h["X-API-Token"] = token; return h; }
+
+function renderState(s){
+  if (!s || !s.indices) return;
+  $("#status").textContent = s.status || "";
+  $("#clock").textContent = s.generated_at ? s.generated_at.slice(11,19) + " IST" : "-";
+  const m = $("#mode"); m.textContent = s.mode || "-"; m.className = "pill " + (s.mode === "MOCK DATA" ? "mock" : "live");
+  if (s.rules && !rules) { rules = s.rules; renderRules(); }
+  const r = s.rules || rules || {};
+  const cards = Object.values(s.indices).map(ix => {
+    const rows = Object.values(ix.windows).map(w => {
+      if (!w.ready) return `<tr><td>${w.window} min</td><td colspan="8" class="muted" style="text-align:left">${esc(w.reason||"not ready")}</td></tr>`;
+      const pct = (r.move_pct||{})[w.window] || 0, pts = ((r.move_points||{})[ix.index]||{})[w.window] || 0;
+      const ratio = Math.max(pct ? Math.abs(w.change_pct)/pct : 0, pts ? Math.abs(w.change)/pts : 0);
+      return `<tr><td>${w.window} min</td><td>${signed(w.change,1)}</td><td>${signed(w.change_pct,2,"%")}</td>
+        <td><span class="meter" title="${num(ratio*100,0)}% of threshold"><i class="${ratio>=1?"hit":""}" style="width:${Math.min(100,ratio*100)}%"></i></span></td>
+        <td>${num(w.range,1)}</td><td>${num(w.strength,2)}</td><td>${num(w.rvol,2)}</td>
+        <td>${w.consistency==null?"–":num(w.consistency*100,0)+"%"}</td>
+        <td title="${esc(w.oi_reading||"")}">${signed(w.oi_change_pct,2,"%")}</td></tr>`;
+    }).join("");
+    return `<section class="card"><div class="idxhead"><span class="name">${esc(ix.index)}</span>
+      <span class="px">${num(ix.price,2)}</span>${signed(ix.day_change_pct,2,"%")}
+      ${ix.stale?'<span class="pill mock">data stale</span>':""}</div>
+      <div class="kv"><span>RSI 1m <b>${num(ix.rsi_1m,1)}</b></span><span>ATR 1m <b>${num(ix.atr_1m,1)}</b></span>
+      <span>Fut vs VWAP <b>${ix.fut_vwap_dist_pct==null?"–":signed(ix.fut_vwap_dist_pct,2,"%")}</b></span>
+      <span>Data age <b>${ix.data_age_seconds==null?"–":num(ix.data_age_seconds,0)+" s"}</b></span></div>
+      <div class="scroll"><table><thead><tr><th>Window</th><th>Pts</th><th>%</th><th>vs threshold</th><th>Range</th>
+      <th title="move ÷ (1-min ATR × √window)">Strength</th><th title="futures volume vs previous 30 min">RVOL</th>
+      <th title="candles closing in the move's direction">Consist.</th><th>Fut OI</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${(ix.errors||[]).length?`<div class="msg err">${esc(ix.errors.join("; "))}</div>`:""}</section>`;
+  });
+  const vix = s.vix || {};
+  const vrows = Object.values(vix.windows||{}).map(w => `<span>${w.window} min <b>${w.ready?signed(w.change_pct,2,"%"):"–"}</b></span>`).join("");
+  cards.push(`<section class="card"><div class="idxhead"><span class="name">India VIX</span><span class="px">${num(vix.value,2)}</span></div>
+    <div class="kv">${vrows||"<span>collecting samples…</span>"}</div></section>`);
+  $("#indices").innerHTML = cards.join("");
+  renderStrategies(s.strategies);
+  renderPaper(s.paper);
+  const sel = $("#fIndex"), have = new Set([...sel.options].map(o => o.value));
+  [...Object.keys(s.indices), "INDIAVIX"].forEach(n => { if (!have.has(n)) sel.add(new Option(n, n)); });
+}
+
+function renderEvents(flashFirst){
+  const fi = $("#fIndex").value, fq = $("#fQuality").value;
+  const list = events.filter(e => (!fi || e.index === fi) && (!fq || e.quality === fq));
+  $("#evCount").textContent = `${list.length} shown`;
+  if (!list.length) { $("#feed").innerHTML = '<div class="muted">No triggers yet.</div>'; return; }
+  $("#feed").innerHTML = list.slice(0, 300).map((e, i) => {
+    const checks = Object.entries(e.checks||{}).map(([k,v]) => `${k} ${v}`).join(" · ");
+    return `<div class="ev ${i===0&&flashFirst?"new":""}"><span class="t">${esc((e.time||"").slice(11,19))}</span>
+      <span class="m ${e.direction==="UP"?"up":"down"}">${esc(e.message)}</span><span class="q ${esc(e.quality)}">${esc(e.quality)}</span>
+      <span class="d">${num(e.ref_price,2)} → ${num(e.price,2)} · ${num(e.threshold_ratio,2)}× threshold
+      ${e.strength!=null?` · strength ${num(e.strength,2)}`:""}${e.rvol!=null?` · rvol ${num(e.rvol,2)}`:""}
+      ${e.oi_reading?` · ${esc(e.oi_reading)}`:""}${checks?` · ${esc(checks)}`:""}${e.pushed?" · sent":""}</span></div>`;
+  }).join("");
+}
+
+const FIELDS = [
+  ["windows","Windows (min)","text"],["move_pct","Move % per window","text"],
+  ["min_strength","Min strength (0 = off)","number"],["min_rvol","Min futures RVOL (0 = off)","number"],
+  ["min_consistency","Min consistency 0–1 (0 = off)","number"],["oi_confirm","OI must confirm","bool"],
+  ["strong_mult","STRONG at × threshold","number"],["alignment","All-windows alignment trigger","bool"],
+  ["alignment_frac","Alignment: × threshold each","number"],["vix_move_pct","VIX move % per window","text"],
+  ["cooldown_minutes","Cooldown min (0 = window)","number"],["max_data_age_seconds","Max data age (s)","number"],
+  ["poll_seconds","Poll every (s)","number"],["push","Push alerts","bool"],
+  ["push_min_quality","Push from quality","select"],
+];
+const mapText = m => Object.entries(m||{}).map(([k,v]) => `${k}:${v}`).join(", ");
+function renderRules(){
+  if (!rules) return;
+  const pts = Object.keys(rules.move_points||{});
+  const extra = (pts.length ? pts : ["NIFTY","SENSEX"]).map(n => [`pts_${n}`, `${n} move points per window`, "text", mapText((rules.move_points||{})[n])]);
+  $("#rules").innerHTML = [...FIELDS, ...extra].map(([k,label,type,val]) => {
+    const v = val !== undefined ? val : rules[k];
+    if (type === "bool") return `<label>${label}<select name="${k}"><option value="true" ${v?"selected":""}>on</option><option value="false" ${!v?"selected":""}>off</option></select></label>`;
+    if (type === "select") return `<label>${label}<select name="${k}">${["UNCONFIRMED","CONFIRMED","STRONG"].map(q=>`<option ${q===v?"selected":""}>${q}</option>`).join("")}</select></label>`;
+    const shown = Array.isArray(v) ? v.join(", ") : (typeof v === "object" ? mapText(v) : v);
+    return `<label>${label}<input name="${k}" type="${type==="number"?"number":"text"}" step="any" value="${esc(shown)}"></label>`;
+  }).join("");
+}
+
+async function call(method, url, body){
+  const r = await fetch(url, {method, headers: headers(), body: body ? JSON.stringify(body) : undefined});
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) { const t = prompt("API token (MOVEMENT_API_TOKEN):"); if (t) { token = t; try { localStorage.setItem("movementToken", t); } catch (e) {} } }
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+function say(text, ok){ const m = $("#rulesMsg"); m.textContent = text; m.className = "msg " + (ok ? "ok" : "err"); }
+
+$("#save").onclick = async () => {
+  const fd = new FormData($("#rules")), body = {}, points = {};
+  for (const [k, v] of fd.entries()) { if (k.startsWith("pts_")) points[k.slice(4)] = v; else body[k] = v; }
+  body.move_points = points;
+  try { const d = await call("PUT", "/api/config", body); rules = d.rules; renderRules(); say("Saved.", true); } catch (e) { say(e.message, false); }
+};
+$("#reset").onclick = async () => { try { const d = await call("POST", "/api/config/reset"); rules = d.rules; renderRules(); say("Back to config/scanner.ini.", true); } catch (e) { say(e.message, false); } };
+$("#evalNow").onclick = async () => { try { await call("POST", "/api/evaluate"); say("Evaluating…", true); } catch (e) { say(e.message, false); } };
+$("#test").onclick = async () => { try { const d = await call("POST", "/api/test-alert"); say("Test sent via: " + d.channels.join(", "), true); } catch (e) { say(e.message, false); } };
+$("#fIndex").onchange = $("#fQuality").onchange = () => renderEvents(false);
+
+async function loadEvents(){ try { events = await (await fetch("/api/events?limit=500")).json(); renderEvents(false); } catch (e) {} }
+async function loadConfig(){ try { rules = (await (await fetch("/api/config")).json()).rules; renderRules(); } catch (e) {} }
+
+
+function money(v){ return v == null ? "–" : `<span class="${v>0?"up":v<0?"down":""}">Rs ${num(v,0)}</span>`; }
+let titles = {}, lastSignal = {};
+function renderStrategies(st){
+  if (!st) return;
+  $("#stratCard").hidden = false;
+  const keys = Object.keys(st);
+  keys.forEach(k => titles[k] = st[k].title);
+  const idx = [...new Set(keys.flatMap(k => Object.keys(st[k].indices || {})))];
+  $("#stratNote").textContent = `${keys.length} strategies on completed bars · each is its own paper book`;
+  const cell = (k, i) => {
+    const r = (st[k].indices || {})[i]; if (!r) return '<td class="muted" style="text-align:left">–</td>';
+    const fresh = lastSignal[k + i] && Date.now() - lastSignal[k + i] < 120000;
+    const tag = r.direction ? `<span class="side ${r.direction === "UP" ? "CE" : "PE"}">${r.direction === "UP" ? "CALL" : "PUT"}</span> ` : "";
+    return `<td style="text-align:left;white-space:normal;min-width:220px${fresh ? ";background:var(--warnbg)" : ""}">${tag}<span class="${r.direction ? "" : "muted"}">${esc(r.reason)}</span></td>`;
+  };
+  $("#strat").innerHTML = `<thead><tr><th>Strategy</th>${idx.map(i => `<th style="text-align:left">${esc(i)}</th>`).join("")}</tr></thead>
+    <tbody>${keys.map(k => `<tr><td>${esc(st[k].title)}</td>${idx.map(i => cell(k, i)).join("")}</tr>`).join("")}</tbody>`;
+}
+function renderPaper(p){
+  if (!p) return;
+  const names = Object.keys(p).filter(b => b !== "skipped" && p[b] && p[b].settings);
+  if (!names.length) { $("#books").innerHTML = '<div class="muted">Paper trading is off.</div>'; return; }
+  const label = b => titles[b] || b.replace(/_/g, " ");
+  let total = 0;
+  const summary = names.map(b => { const k = p[b], st = k.settings || {}; total += k.net || 0;
+    return `<tr><td style="text-transform:capitalize">${esc(label(b))}${k.halted?` <span class="pill mock" title="${esc(k.halted)}">halted</span>`:""}</td>
+      <td>${money(k.net)}</td><td>${money(k.realised)}</td><td>${money(k.open_pnl)}</td><td>${k.trades}/${k.max_trades}</td>
+      <td>${k.win_rate==null?"–":k.win_rate+"%"}</td><td class="muted">${st.stop_pct}% / ${st.target_pct}% / ${st.max_hold_minutes}m</td></tr>`; }).join("");
+  const trades = names.flatMap(b => [...p[b].open, ...p[b].closed]).sort((a, z) => (z.entry_time||"").localeCompare(a.entry_time||""));
+  const rows = trades.map(t => `<tr><td>${esc((t.entry_time||"").slice(11,19))}</td><td style="text-transform:capitalize">${esc(label(t.book))}</td>
+      <td><span class="side ${t.side}">${t.side}</span> ${esc(t.symbol)}</td><td>${t.qty}</td><td>${num(t.entry_price,2)}</td>
+      <td>${num(t.open ? t.last_price : t.exit_price,2)}</td><td>${num(t.stop,1)} / ${num(t.target,1)}</td><td>${money(t.net)}</td>
+      <td style="text-align:left">${t.open ? `<button class="small" data-close="${esc(t.id)}">Close</button>` : esc(t.exit_reason)}</td></tr>`).join("");
+  $("#books").innerHTML = `<div><div class="stat"><span>All books today <b>${money(total)}</b></span><span class="muted">stop / target / max hold</span></div>
+    <div class="scroll"><table><thead><tr><th>Book</th><th>Net</th><th>Realised</th><th>Open</th><th>Trades</th><th>Win</th><th>Exits</th></tr></thead><tbody>${summary}</tbody></table></div></div>
+    <div><div class="stat"><span>Trades today <b>${trades.length}</b></span></div>
+    <div class="scroll" style="max-height:420px;overflow:auto"><table><thead><tr><th>Time</th><th>Book</th><th>Contract</th><th>Qty</th><th>Entry</th><th>Now/Exit</th><th>Stop / Tgt</th><th>Net</th><th style="text-align:left">Status</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="9" class="muted" style="text-align:left">No trades today.</td></tr>'}</tbody></table></div></div>`;
+  const sk = (p.skipped||[]).slice(-3).reverse();
+  $("#skipped").textContent = sk.length ? "Not taken: " + sk.map(x => `${x.time.slice(11,19)} ${x.book} ${x.index} ${x.direction} (${x.reason})`).join(" · ") : "";
+}
+$("#books").addEventListener("click", async ev => {
+  const id = ev.target.dataset && ev.target.dataset.close; if (!id) return;
+  if (!confirm("Close this paper trade at the current bid?")) return;
+  try { await call("POST", "/api/paper/close/" + encodeURIComponent(id)); } catch (e) { alert(e.message); }
+});
+
+let audio = null;
+function beep(up){
+  if (!$("#soundOn").checked) return;
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    [0, .18].forEach((d, i) => { const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = up ? (i ? 990 : 660) : (i ? 440 : 660); g.gain.value = .15; o.connect(g); g.connect(audio.destination);
+      o.start(audio.currentTime + d); o.stop(audio.currentTime + d + .15); }); } catch (e) {}
+}
+function tradeAlert(a){
+  const open = a.action === "open";
+  const div = document.createElement("div");
+  div.className = "toast " + (open ? a.side : "close");
+  div.innerHTML = `<button class="x" title="Dismiss">×</button><b>${open ? (a.side === "CE" ? "CALL BUY" : "PUT BUY") : "EXIT"} · ${esc(a.book)} · ${esc(a.index)}</b>
+    <div>${esc(a.message)}</div><div class="muted" style="font-size:12px;margin-top:4px">${esc((a.trigger||{}).message || "")} · paper trade, no order placed</div>`;
+  div.querySelector(".x").onclick = () => div.remove();
+  $("#toasts").prepend(div);
+  setTimeout(() => div.remove(), open ? 60000 : 30000);
+  beep(open && a.side === "CE");
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification((open ? (a.side === "CE" ? "CALL BUY " : "PUT BUY ") : "EXIT ") + a.index, {body: a.message, tag: a.id + a.action}); } catch (e) {}
+  }
+}
+$("#notifyBtn").onclick = async () => {
+  if (!("Notification" in window)) { alert("This browser has no notifications."); return; }
+  const r = await Notification.requestPermission(); $("#notifyBtn").textContent = r === "granted" ? "Browser alerts on" : "Browser alerts blocked";
+};
+if ("Notification" in window && Notification.permission === "granted") $("#notifyBtn").textContent = "Browser alerts on";
+
+let poll = null;
+function connect(){
+  const es = new EventSource("/api/stream");
+  const c = $("#conn");
+  es.onopen = () => { c.textContent = "live stream"; c.className = "pill live"; if (poll) { clearInterval(poll); poll = null; } };
+  es.addEventListener("state", ev => renderState(JSON.parse(ev.data)));
+  es.addEventListener("movement", ev => { events.unshift(JSON.parse(ev.data)); renderEvents(true); });
+  es.addEventListener("trade", ev => tradeAlert(JSON.parse(ev.data)));
+  es.addEventListener("signal", ev => { const s = JSON.parse(ev.data); lastSignal[s.strategy + s.index] = Date.now(); });
+  es.onerror = () => {
+    c.textContent = "reconnecting"; c.className = "pill mock";
+    if (!poll) poll = setInterval(async () => { try { renderState(await (await fetch("/api/state")).json()); } catch (e) {} }, 5000);
+  };
+}
+loadConfig(); loadEvents(); connect();
+</script>
+</body>
+</html>

@@ -951,8 +951,10 @@ class DeskProxyTests(unittest.TestCase):
     def test_page_and_assets_are_served(self):
         status, body = self.call(self.desk, "/")
         self.assertEqual(status, 200)
-        for needle in (b'id="intraday"', b'id="swing"', b"/static/equity.js", b'href="#indices"', b'id="fno"'):
+        for needle in (b'href="#indices"', b'id="fno"', b'id="breakouts"'):
             self.assertIn(needle, body)
+        for gone in (b'id="intraday"', b'id="swing"', b"/static/equity.js", b"Intraday equity", b"eq_pnl"):   # cash equity removed
+            self.assertNotIn(gone, body)
         self.assertEqual(self.call(self.desk, "/static/equity.js")[0], 200)
         self.assertEqual(self.call(self.desk, "/static/equity.css")[0], 200)
         self.assertEqual(self.call(self.desk, "/static/../__main__.py")[0], 404)

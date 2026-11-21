@@ -20,7 +20,7 @@ from src.utils.numbers import hhmm
 
 logger = logging.getLogger("scanner.fno.config")
 FNO_INI = settings.CONFIG_DIR / "fno.ini"
-SUPPORTED_INDICES = ("NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX")
+SUPPORTED_INDICES = ("NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX")
 TIMEFRAMES = (1, 3, 5, 15, 30, 60)          # minutes; daily is always derived as well
 
 

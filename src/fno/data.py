@@ -164,7 +164,8 @@ class LiveData:
 # Mock (synthetic, labelled)
 # =============================================================================
 MOCK_BASE = {"NIFTY": (25000.0, 50, 65, "NSE_INDEX|Nifty 50"), "BANKNIFTY": (57000.0, 100, 30, "NSE_INDEX|Nifty Bank"),
-             "FINNIFTY": (27000.0, 50, 60, "NSE_INDEX|Nifty Fin Service"), "SENSEX": (82000.0, 100, 20, "BSE_INDEX|SENSEX"),
+             "FINNIFTY": (27000.0, 50, 60, "NSE_INDEX|Nifty Fin Service"),
+             "MIDCPNIFTY": (13000.0, 25, 120, "NSE_INDEX|NIFTY MID SELECT"), "SENSEX": (82000.0, 100, 20, "BSE_INDEX|SENSEX"),
              "RELIANCE": (1450.0, 10, 500, "NSE_EQ|MOCKRELIANCE"), "HDFCBANK": (990.0, 5, 1100, "NSE_EQ|MOCKHDFCBANK"),
              "ICICIBANK": (1380.0, 10, 700, "NSE_EQ|MOCKICICIBANK"), "INFY": (1520.0, 20, 400, "NSE_EQ|MOCKINFY"),
              "TCS": (3150.0, 20, 175, "NSE_EQ|MOCKTCS"), "SBIN": (960.0, 5, 750, "NSE_EQ|MOCKSBIN"),
@@ -253,7 +254,7 @@ class MockData:
         stamps = pd.DatetimeIndex([pd.Timestamp(datetime.combine(d.date(), OPEN)).tz_localize(TZ) + pd.Timedelta(minutes=i)
                                    for d in days for i in range(375)])
         n = len(stamps)
-        sigma = 0.00045 if symbol in ("NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX") else 0.0009
+        sigma = 0.00045 if symbol in ("NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX") else 0.0009
         drift = np.repeat(rng.normal(0, sigma * 0.22, n // 90 + 1), 90)[:n]          # ~90-minute trend regimes
         rets = drift + rng.normal(0, sigma, n)
         gaps = rng.normal(0, sigma * 6, len(days))                                   # overnight gaps
@@ -263,9 +264,10 @@ class MockData:
         open_[::375] *= np.exp(gaps)                                                 # the session OPENS at the gap
         wick = np.abs(rng.normal(0, sigma * 0.6, (2, n))) * close
         vol = rng.lognormal(9.5, 0.6, n) * (1 + 3 * np.abs(rets) / sigma)
+        oi = (1e6 * np.exp(np.cumsum(rng.normal(0, 0.002, n)))).round()            # synthetic open interest
         frame = pd.DataFrame({"open": open_, "high": np.maximum(open_, close) + wick[0],
                               "low": np.minimum(open_, close) - wick[1], "close": close, "volume": vol.round(),
-                              "oi": np.nan}, index=stamps)
+                              "oi": oi}, index=stamps)
         self._series[symbol] = frame
         return frame
 
@@ -283,7 +285,7 @@ class MockData:
         return None
 
     def _iv(self, symbol: str, strike: float, spot: float) -> float:
-        base = 0.13 if symbol in ("NIFTY", "SENSEX", "FINNIFTY") else 0.16 if symbol == "BANKNIFTY" else 0.28
+        base = 0.13 if symbol in ("NIFTY", "SENSEX", "FINNIFTY") else 0.16 if symbol in ("BANKNIFTY", "MIDCPNIFTY") else 0.28
         return base + 0.6 * abs(strike / spot - 1)
 
     def _years(self, expiry: date, now: pd.Timestamp) -> float:

@@ -4,20 +4,19 @@ Trading desk: ONE page that combines the dashboards.
     NIFTY / SENSEX index scanner      python -m src.main      http://127.0.0.1:8502
     NIFTY 50 stock options service    python -m src.stocks    http://127.0.0.1:8504
     F&O multi-strategy engine         python -m src.fno       http://127.0.0.1:8520   (optional)
-    NIFTY 50 cash equity              python -m src.equity    http://127.0.0.1:8530   (intraday + swing tabs)
 
     python -m src.desk                      page on http://127.0.0.1:8500
     python -m src.desk --port 8600          another port
     python -m src.desk --no-notify          without the desktop popup when a stock trade triggers (src/desk/notify.py)
     python -m src.desk --test-notify        show one sample popup and exit
     python -m src.desk --index-url http://127.0.0.1:8502 --stocks-url http://127.0.0.1:8504
-    python -m src.desk --no-equity          do not start the equity service (the two equity tabs then show "not answering")
+    python -m src.desk --with-equity        also host the NIFTY 50 cash-equity service (off by default; its tabs were removed from the page)
 
 It is a front end (standard library only): it reads /api/state of the services and serves one page.
 The services keep running exactly as before and their own pages still work. If one of them is not running,
 its part of the page says so and the other parts keep working.
 
-The equity service is the one service the desk runs itself: unless something already answers on its port, the desk
+With --with-equity the desk also runs the NIFTY 50 cash-equity service (off by default): unless something already answers on its port, the desk
 hosts it in this same process (a background thread, stopped with the desk), so that everything is reachable from
 this one address with one command. Its API is passed through under /api/eq/, POST included; POSTs are accepted from
 this computer only.
@@ -223,13 +222,13 @@ def main(argv=None) -> int:
     p.add_argument("--stocks-url", default="http://127.0.0.1:8504", help="stock options service (python -m src.stocks)")
     p.add_argument("--fno-url", default="http://127.0.0.1:8520", help="F&O multi-strategy engine (python -m src.fno)")
     p.add_argument("--equity-url", default="http://127.0.0.1:8530", help="NIFTY 50 cash-equity service (python -m src.equity)")
-    p.add_argument("--no-equity", action="store_true", help="do not start the equity service with the desk")
+    p.add_argument("--with-equity", action="store_true", help="also host the NIFTY 50 cash-equity service (API only, under /api/eq/)")
     p.add_argument("--no-notify", action="store_true", help="no desktop popup when a stock or F&O trade triggers")
     p.add_argument("--test-notify", action="store_true", help="show one sample popup (5 s) and exit")
     a = p.parse_args(argv)
     from src.desk.notify import TradeWatcher, popup
     if a.test_notify:
-        popup("Trade triggered", "BREAKOUT TRADE OPENED  CE SAMPLE  (100 sh)\nEntry 1,000.00 · SL 990.00 · T1 1,015.00 · T2 1,025.00"
+        popup("Trade triggered", "BREAKOUT TRADE OPENED  CE SAMPLE\nEntry 1,000.00 · SL 990.00 · T1 1,015.00 · T2 1,025.00"
               "\n\nThis is a test popup from the trading desk.", 5)
         return 0
     try:
@@ -238,15 +237,15 @@ def main(argv=None) -> int:
     except OSError as error:
         print(f"Trading desk not started: {a.host}:{a.port} is in use or not allowed ({error}). Try --port 8600.")
         return 1
-    print(f"Trading desk: http://{a.host}:{a.port}/   (index {a.index_url} + stocks {a.stocks_url} + F&O {a.fno_url} "
-          f"+ equity {a.equity_url})", flush=True)
-    if not a.no_equity:
+    print(f"Trading desk: http://{a.host}:{a.port}/   (index {a.index_url} + stocks {a.stocks_url} + F&O {a.fno_url})",
+          flush=True)
+    if a.with_equity:
         try:
             hosted = start_equity(urls[3])
             where = ("already running" if hosted is None else
                      f"started with the project's .venv on {urls[3]} (this Python lacks its packages), log logs/equity.log"
                      if hasattr(hosted, "terminate") else f"running inside the desk on {urls[3]}, log logs/equity.log")
-            print("Equity service (intraday + swing tabs): " + where, flush=True)
+            print("Equity service (API under /api/eq/): " + where, flush=True)
         except Exception as error:      # noqa: BLE001 - the rest of the desk must still come up
             print(f"Equity service not started ({type(error).__name__}: {error}); run python -m src.equity yourself.", flush=True)
     if not a.no_notify:

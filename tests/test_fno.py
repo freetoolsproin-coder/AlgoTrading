@@ -67,6 +67,7 @@ class TestUniverse(unittest.TestCase):
         for sym, ukey, utype, seg, lot, step, base in (("NIFTY", "NSE_INDEX|Nifty 50", "INDEX", "NSE_FO", 65, 50, 25000),
                                                        ("SENSEX", "BSE_INDEX|SENSEX", "INDEX", "BSE_FO", 20, 100, 82000),
                                                        ("MIDCPNIFTY", "NSE_INDEX|X", "INDEX", "NSE_FO", 120, 25, 12000),
+                                                       ("NIFTYNXT50", "NSE_INDEX|Y", "INDEX", "NSE_FO", 25, 100, 68000),
                                                        ("RELIANCE", "NSE_EQ|INE002A01018", "EQUITY", "NSE_FO", 500, 10, 1400)):
             for e in (date(2026, 11, 10), date(2026, 11, 24), date(2026, 12, 29)):
                 for k in range(-5, 6):
@@ -80,7 +81,7 @@ class TestUniverse(unittest.TestCase):
 
     def test_contract_specs_come_from_the_master(self):
         u = Universe(self.rows(), date(2026, 11, 12))
-        self.assertEqual([i.symbol for i in u.indices], ["NIFTY", "SENSEX"])       # other indices are not traded
+        self.assertEqual([i.symbol for i in u.indices], ["NIFTY", "MIDCPNIFTY", "SENSEX"])   # NIFTYNXT50 is not traded
         self.assertEqual([s.symbol for s in u.stocks], ["RELIANCE"])
         n = u.get("nifty")
         self.assertEqual(n.expiries, [date(2026, 11, 24), date(2026, 12, 29)])     # expired contracts dropped
@@ -135,7 +136,7 @@ class TestStrategies(unittest.TestCase):
 
     def test_all_strategies_have_rules_and_settings(self):
         s = all_strategies()
-        self.assertEqual([x.number for x in s], list(range(1, 44)))
+        self.assertEqual([x.number for x in s], list(range(1, 57)))
         for x in s:
             d = x.describe()
             self.assertTrue(d["ce"] and d["pe"] and d["exit"] and d["name"])
@@ -686,8 +687,8 @@ class TestEngine(unittest.TestCase):
         self.engine.cycle(self.feed.fixed)
         s = self.engine.state()
         self.assertTrue(s["mock"] and s["mode"] == "PAPER")
-        self.assertEqual([w["symbol"] for w in s["indices"]], ["NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX"])
-        self.assertEqual(len(s["watchlist"]), 7)
+        self.assertEqual([w["symbol"] for w in s["indices"]], ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX"])
+        self.assertEqual(len(s["watchlist"]), 8)
         self.assertEqual(s["health"]["errors"], [])
         buys = [x for x in self.store.signals() if x["status"] == "BUY"]
         self.assertTrue(buys, "the mock session produced no entry")
@@ -730,7 +731,7 @@ class TestEngine(unittest.TestCase):
         self.run_until(DAY)
         client = create_app(self.engine, api_token="secret").test_client()
         self.assertEqual(client.get("/health").get_json()["mode"], "PAPER")
-        self.assertEqual(len(client.get("/api/strategies").get_json()), 43)
+        self.assertEqual(len(client.get("/api/strategies").get_json()), 56)
         sc = client.get("/api/state").get_json()["scanner"]
         self.assertTrue({"bullish", "bearish", "no_trade"} <= set(sc))
         for r in sc["bullish"] + sc["bearish"]:
@@ -738,7 +739,7 @@ class TestEngine(unittest.TestCase):
             self.assertGreaterEqual(abs(r["bull"] - r["bear"]), 30)                      # no conflicting signals
         ranked = [r["score"] for r in sc["bullish"]]
         self.assertEqual(ranked, sorted(ranked, reverse=True))
-        self.assertEqual(len(client.get("/api/state").get_json()["indices"]), 4)
+        self.assertEqual(len(client.get("/api/state").get_json()["indices"]), 5)
         self.assertIn("overall", client.get("/api/performance").get_json())
         self.assertIn(b"F&amp;O Engine", client.get("/").data)
         r = client.post("/api/strategies/orb", json={"enabled": False, "minutes": 45})

@@ -4,7 +4,7 @@ F&O universe from the Upstox instrument master (JSON, refreshed once a day).
 Nothing about a contract is hard-coded: for every underlying the expiries, lot size per expiry, listed strikes
 (so the strike interval), tick size, option instrument keys and futures keys are read from the master.
 
-    indices   NIFTY, BANKNIFTY, FINNIFTY (NSE_FO) and SENSEX (BSE_FO), matched by `underlying_symbol`
+    indices   NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY (NSE_FO) and SENSEX (BSE_FO), matched by `underlying_symbol`
     stocks    every NSE_FO underlying with underlying_type == EQUITY that has CE and PE rows today
 
 A stock leaves this list on the day the exchange stops listing its options; the backtester warns that a
@@ -28,7 +28,7 @@ from src.config.settings import CACHE_DIR
 logger = logging.getLogger("scanner.fno.universe")
 MASTER_URLS = {"NSE": "https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz",
                "BSE": "https://assets.upstox.com/market-quote/instruments/exchange/BSE.json.gz"}
-INDEX_SEGMENT = {"NIFTY": "NSE_FO", "BANKNIFTY": "NSE_FO", "FINNIFTY": "NSE_FO", "SENSEX": "BSE_FO"}
+INDEX_SEGMENT = {"NIFTY": "NSE_FO", "BANKNIFTY": "NSE_FO", "FINNIFTY": "NSE_FO", "MIDCPNIFTY": "NSE_FO", "SENSEX": "BSE_FO"}
 KEEP = ("segment", "instrument_type", "instrument_key", "underlying_symbol", "underlying_key", "underlying_type",
         "expiry", "strike_price", "lot_size", "tick_size", "trading_symbol", "weekly", "name", "freeze_quantity")
 VIX_NAME = "INDIA VIX"

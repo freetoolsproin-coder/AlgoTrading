@@ -1,6 +1,6 @@
 """
 The strategies of the F&O engine: 35 library strategies, Supertrend + RSI + EMA confirmation (36), option-chain confluence (37), multi-factor scanner (38), and VWAP breakout, pivot point breakout, Supertrend + MACD, VWAP + RSI and
-option volume / OI divergence (39-43).
+option volume / OI divergence (39-43), the algo_options_engine ports (44-55) and the pre-breakout coil (56).
 
 Each strategy is a pure function  fn(f, p, ctx) -> (up, down)  over the enriched base-timeframe frame `f`
 (see indicators.enrich). `up` / `down` are boolean Series marking the completed bar on which the strategy's
@@ -718,4 +718,214 @@ def vol_oi_divergence(f, p, ctx):
     return event(ce_cover & (f["close"] > prev_high(f, n))), event(pe_cover & (f["close"] < prev_low(f, n)))
 
 
-assert len(REGISTRY) == 43 and sorted(s.number for s in REGISTRY.values()) == list(range(1, 44))
+# =============================================================================  algo_options_engine set (44-55)
+# Ports of the algo_options_engine strategy suite. Same trigger rules as the source; the regime router is kept
+# (trend strategies need ADX > 22 and rising, range strategies need ADX < 20) and "HTF bullish / bearish" is the
+# 15-minute trend state. Stops / targets come from this engine's plan, not from the source's fixed ATR multiples.
+def _regime(f, trend_adx=22.0, range_adx=20.0):
+    a = f["adx"]
+    return (a > trend_adx) & (a > a.shift(1)), a < range_adx
+
+
+def _h15(ctx, f):
+    h = ctx.htf.get(15)
+    if h is None:
+        z = pd.Series(np.nan, index=f.index)
+        return z.notna(), z.notna()
+    return h == 1, h == -1
+
+
+@strategy("ae_vwap_momentum", 44, "AE: VWAP momentum (trending)", "trend", "continuation",
+          "trending regime: close > VWAP, EMA9 > EMA21, volume >= min_rvol x average, 15m trend up (first bar of the run)",
+          "trending regime: close < VWAP, EMA9 < EMA21, volume >= min_rvol x average, 15m trend down",
+          {"min_rvol": 1.3}, {"min_rvol": [1.0, 1.3, 1.8]}, needs=("volume", "htf15"))
+def ae_vwap_momentum(f, p, ctx):
+    trending, _ = _regime(f)
+    hu, hd = _h15(ctx, f)
+    vol = f["rvol"] > p["min_rvol"]
+    up = trending & (f["close"] > f["vwap"]) & (f["ema9"] > f["ema21"]) & vol & hu
+    dn = trending & (f["close"] < f["vwap"]) & (f["ema9"] < f["ema21"]) & vol & hd
+    return event(up), event(dn)
+
+
+@strategy("ae_orb", 45, "AE: ORB breakout (trending + HTF)", "breakout", "breakout",
+          "trending regime and 15m trend up: close crosses above the high of the first `minutes` of the session",
+          "trending regime and 15m trend down: close crosses below the opening-range low",
+          {"minutes": 15}, {"minutes": [15, 30]}, needs=("htf15",),
+          exit="a close back inside the opening range; " + COMMON_EXIT)
+def ae_orb(f, p, ctx):
+    trending, _ = _regime(f)
+    hu, hd = _h15(ctx, f)
+    hi, lo = ind.opening_range(f, int(p["minutes"]), ctx.tf)
+    return trending & hu & xup(f["close"], hi), trending & hd & xdn(f["close"], lo)
+
+
+@strategy("ae_ema_stack", 46, "AE: full EMA stack trend", "trend", "continuation",
+          "trending regime: EMA9 crosses above EMA21 with EMA9 > EMA21 > EMA50 > EMA200 (cross within `window` bars)",
+          "trending regime: EMA9 crosses below EMA21 with EMA9 < EMA21 < EMA50 < EMA200 (cross within `window` bars)",
+          {"window": 3}, {"window": [1, 3, 6]})
+def ae_ema_stack(f, p, ctx):
+    trending, _ = _regime(f)
+    e9, e21, e50, e200 = f["ema9"], f["ema21"], f["ema50"], f["ema200"]
+    w = int(p["window"])
+    crossed_up = xup(e9, e21).astype(float).rolling(w, min_periods=1).max() == 1
+    crossed_dn = xdn(e9, e21).astype(float).rolling(w, min_periods=1).max() == 1
+    up = trending & (e9 > e21) & (e21 > e50) & (e50 > e200) & crossed_up
+    dn = trending & (e9 < e21) & (e21 < e50) & (e50 < e200) & crossed_dn
+    return event(up), event(dn)
+
+
+@strategy("ae_supertrend", 47, "AE: Supertrend flip (trending + HTF)", "trend", "continuation",
+          "trending regime and 15m trend up: Supertrend flipped up within `window` bars",
+          "trending regime and 15m trend down: Supertrend flipped down within `window` bars",
+          {"length": 10, "mult": 3.0, "window": 3}, {"mult": [2.0, 3.0], "window": [1, 3]}, needs=("htf15",),
+          exit="Supertrend flips back; " + COMMON_EXIT)
+def ae_supertrend(f, p, ctx):
+    trending, _ = _regime(f)
+    hu, hd = _h15(ctx, f)
+    _, d = ind.supertrend(f, int(p["length"]), float(p["mult"]))
+    w = int(p["window"])
+    fu = ((d == 1) & (d.shift(1) == -1)).astype(float).rolling(w, min_periods=1).max() == 1
+    fd = ((d == -1) & (d.shift(1) == 1)).astype(float).rolling(w, min_periods=1).max() == 1
+    return event(trending & hu & (d == 1) & fu), event(trending & hd & (d == -1) & fd)
+
+
+@strategy("ae_bb_reversion", 48, "AE: Bollinger reversion (ranging)", "reversal", "reversal",
+          "ranging regime (ADX < 20): close below the lower band with RSI < rsi_low",
+          "ranging regime: close above the upper band with RSI > 100 - rsi_low",
+          {"rsi_low": 35.0}, {"rsi_low": [30.0, 35.0, 40.0]},
+          exit="the middle band (20-SMA) is the objective; " + COMMON_EXIT)
+def ae_bb_reversion(f, p, ctx):
+    _, ranging = _regime(f)
+    up = ranging & (f["close"] < f["bb_low"]) & (f["rsi"] < p["rsi_low"])
+    dn = ranging & (f["close"] > f["bb_up"]) & (f["rsi"] > 100 - p["rsi_low"])
+    return event(up), event(dn)
+
+
+@strategy("ae_adx_di", 49, "AE: ADX > 25 DI cross", "trend", "continuation",
+          "+DI crossed above -DI within `window` bars, +DI still on top, and the trend is confirmed: ADX > adx_min and rising",
+          "-DI crossed above +DI within `window` bars, -DI still on top, ADX > adx_min and rising",
+          {"adx_min": 25.0, "window": 5}, {"adx_min": [22.0, 25.0, 30.0], "window": [3, 5, 8]})
+def ae_adx_di(f, p, ctx):
+    trending, _ = _regime(f)
+    strong = trending & (f["adx"] > p["adx_min"])
+    w = int(p["window"])
+    cu = xup(f["pdi"], f["mdi"]).astype(float).rolling(w, min_periods=1).max() == 1
+    cd = xup(f["mdi"], f["pdi"]).astype(float).rolling(w, min_periods=1).max() == 1
+    return event(strong & cu & (f["pdi"] > f["mdi"])), event(strong & cd & (f["mdi"] > f["pdi"]))
+
+
+@strategy("ae_rsi_divergence", 50, "AE: RSI swing divergence (ranging)", "reversal", "reversal",
+          "ranging regime: the low breaks the previous `window`-bar low while RSI stays above its window low and below rsi_max",
+          "ranging regime: the high breaks the previous `window`-bar high while RSI stays below its window high and above 100 - rsi_max",
+          {"window": 11, "rsi_max": 40.0}, {"window": [8, 11, 15]})
+def ae_rsi_divergence(f, p, ctx):
+    _, ranging = _regime(f)
+    w, r = int(p["window"]), f["rsi"]
+    lo_w, hi_w = f["low"].shift(1).rolling(w).min(), f["high"].shift(1).rolling(w).max()
+    rlo, rhi = r.shift(1).rolling(w).min(), r.shift(1).rolling(w).max()
+    up = ranging & (f["low"] < lo_w) & (r > rlo) & (r < p["rsi_max"])
+    dn = ranging & (f["high"] > hi_w) & (r < rhi) & (r > 100 - p["rsi_max"])
+    return event(up), event(dn)
+
+
+@strategy("ae_atr_expansion", 51, "AE: ATR expansion bar", "breakout", "breakout",
+          "trending regime, 15m trend up, ATR above its 20-bar mean: a bullish bar with range >= range_atr x ATR",
+          "trending regime, 15m trend down, ATR above its mean: a bearish bar with range >= range_atr x ATR",
+          {"range_atr": 1.8}, {"range_atr": [1.5, 1.8, 2.2]}, needs=("htf15",))
+def ae_atr_expansion(f, p, ctx):
+    trending, _ = _regime(f)
+    hu, hd = _h15(ctx, f)
+    expanding = f["atr"] > f["atr"].rolling(20).mean()
+    wide = (f["high"] - f["low"]) > p["range_atr"] * f["atr"]
+    base = trending & expanding & wide
+    return base & hu & (f["close"] > f["open"]), base & hd & (f["close"] < f["open"])
+
+
+@strategy("ae_pdh_pdl", 52, "AE: PDH/PDL breakout with volume (trending)", "breakout", "breakout",
+          "trending regime: close crosses above the previous day's high on above-average volume",
+          "trending regime: close crosses below the previous day's low on above-average volume",
+          {"min_rvol": 1.0}, {"min_rvol": [1.0, 1.3]}, needs=("volume",),
+          exit="a close back through the broken level; " + COMMON_EXIT)
+def ae_pdh_pdl(f, p, ctx):
+    trending, _ = _regime(f)
+    vol = f["rvol"] > p["min_rvol"]
+    return trending & vol & xup(f["close"], f["pd_high"]), trending & vol & xdn(f["close"], f["pd_low"])
+
+
+@strategy("ae_volume_profile", 53, "AE: rolling value-area breakout", "confluence", "breakout",
+          "15m trend up: close crosses above the value-area high of the previous `window` bars",
+          "15m trend down: close crosses below the value-area low of the previous `window` bars",
+          {"window": 75}, {"window": [50, 75, 100]}, needs=("volume", "htf15"),
+          exit="the point of control is the invalidation level; " + COMMON_EXIT)
+def ae_volume_profile(f, p, ctx):
+    hu, hd = _h15(ctx, f)
+    _, vah, val = ind.rolling_value_area(f, int(p["window"]))
+    return hu & xup(f["close"], vah), hd & xdn(f["close"], val)
+
+
+@strategy("ae_futures_oi", 54, "AE: futures OI build-up", "options", "continuation",
+          "long build-up: close up >= move_atr x ATR on the bar, futures OI rising, volume above average",
+          "short build-up: close down >= move_atr x ATR on the bar, futures OI rising, volume above average",
+          {"move_atr": 0.3}, {"move_atr": [0.2, 0.3, 0.5]}, needs=("volume",))
+def ae_futures_oi(f, p, ctx):
+    if "oi" not in f or not f["oi"].notna().any():
+        return _none(f)
+    oi = f["oi"]
+    ok = (oi > 0) & (oi.shift(1) > 0) & (oi > oi.shift(1)) & (f["rvol"] > 1.0)
+    move = f["close"] - f["close"].shift(1)
+    return event(ok & (move > p["move_atr"] * f["atr"])), event(ok & (move < -p["move_atr"] * f["atr"]))
+
+
+@strategy("ae_kalman", 55, "AE: Kalman velocity trend", "trend", "continuation",
+          "Kalman-filtered velocity rises through vel_atr x ATR with the close above the filtered price",
+          "Kalman-filtered velocity falls through -vel_atr x ATR with the close below the filtered price",
+          {"vel_atr": 0.25}, {"vel_atr": [0.15, 0.25, 0.35]})
+def ae_kalman(f, p, ctx):
+    kp, kv = ind.kalman_trend(f["close"])
+    th = p["vel_atr"] * f["atr"]
+    return xup(kv, th) & (f["close"] > kp), xdn(kv, -th) & (f["close"] < kp)
+
+
+# =============================================================================  pre-breakout (56)
+@strategy("pre_breakout", 56, "Pre-breakout coil (CE / PE before the break)", "breakout", "breakout",
+          "price coils within near_atr x ATR BELOW resistance (previous-day high, session high or last swing high) "
+          "after a volatility squeeze (Bollinger inside Keltner or ATR below its 20-bar mean) while buyers press: "
+          "higher lows on the last `hl_bars` bars, close in the top of its range, RSI rising in rsi_lo..rsi_hi, "
+          "close > EMA20 > EMA50, 15m trend not bearish. Fires BEFORE the level breaks",
+          "the mirror: price coils within near_atr x ATR ABOVE support (previous-day low, session low or last swing low) "
+          "after a squeeze while sellers press: lower highs, close near the low, RSI falling in 100-rsi_hi..100-rsi_lo, "
+          "close < EMA20 < EMA50, 15m trend not bullish",
+          {"near_atr": 0.6, "squeeze_bars": 6, "hl_bars": 3, "rsi_lo": 52.0, "rsi_hi": 68.0, "min_bar": 3},
+          {"near_atr": [0.4, 0.6, 0.9], "squeeze_bars": [4, 6, 10]}, needs=("htf15",),
+          exit="a close back through EMA20, or no break of the level within the time stop; " + COMMON_EXIT)
+def pre_breakout(f, p, ctx):
+    c, a = f["close"], f["atr"]
+    near = p["near_atr"] * a
+    res = pd.concat([f["pd_high"], f["day_hi_prev"], f["swing_hi"]], axis=1)
+    sup = pd.concat([f["pd_low"], f["day_lo_prev"], f["swing_lo"]], axis=1)
+    res = res.where(res.gt(c, axis=0)).min(axis=1)              # nearest resistance above the close
+    sup = sup.where(sup.lt(c, axis=0)).max(axis=1)              # nearest support below the close
+    sq_now = ((f["bb_up"] < f["kc_up"]) & (f["bb_low"] > f["kc_low"])) | (a < 0.9 * a.rolling(20, min_periods=10).mean())
+    squeezed = sq_now.astype(float).rolling(int(p["squeeze_bars"]), min_periods=1).max() == 1
+    k = int(p["hl_bars"])
+    hl = pd.Series(True, index=f.index)
+    lh = pd.Series(True, index=f.index)
+    for i in range(k - 1):
+        hl &= f["low"].shift(i) > f["low"].shift(i + 1)
+        lh &= f["high"].shift(i) < f["high"].shift(i + 1)
+    r = f["rsi"]
+    h15 = ctx.htf.get(15)
+    h15 = pd.Series(0.0, index=f.index) if h15 is None else h15.fillna(0.0)
+    late = f["bar_no"] >= int(p["min_bar"])
+    vw = f["vwap"]
+    up = (late & squeezed & hl & (res - c <= near) & (res > c) & (f["close_pos"] >= 0.6) &
+          (r >= p["rsi_lo"]) & (r <= p["rsi_hi"]) & (r > r.shift(1)) & (c > f["ema20"]) & (f["ema20"] > f["ema50"]) &
+          (h15 >= 0) & (vw.isna() | (c > vw)))
+    dn = (late & squeezed & lh & (c - sup <= near) & (sup < c) & (f["close_pos"] <= 0.4) &
+          (r <= 100 - p["rsi_lo"]) & (r >= 100 - p["rsi_hi"]) & (r < r.shift(1)) & (c < f["ema20"]) & (f["ema20"] < f["ema50"]) &
+          (h15 <= 0) & (vw.isna() | (c < vw)))
+    return event(up), event(dn)
+
+
+assert len(REGISTRY) == 56 and sorted(s.number for s in REGISTRY.values()) == list(range(1, 57))

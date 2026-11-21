@@ -1,4 +1,4 @@
- python -m src.main
+python -m src.main
 
 .venv\Scripts\python.exe -m src.stocks
 

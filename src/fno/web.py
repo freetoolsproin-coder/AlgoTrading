@@ -6,7 +6,7 @@ Flask app of the F&O engine (dashboard + JSON API). It reads the engine's state;
     GET  /api/stream                Server-Sent Events: a state summary every few seconds, each signal as it happens
     GET  /api/trades                paper trade history
     GET  /api/performance           overall + by strategy / symbol / CE-PE / time of day / exit, equity curve
-    GET  /api/strategies            the 43 strategies with rules, settings and signal counts
+    GET  /api/strategies            the 56 strategies with rules, settings and signal counts
     POST /api/strategies/<key>      {"enabled": bool, "<param>": value}   (this computer, or X-API-Token)
     GET  /api/backtests             saved backtest reports;  /api/backtests/<id> one report
     POST /api/backtests/run         {"symbols": "...", "from": "...", "to": "...", "strategies": "...", "walk_forward": bool}

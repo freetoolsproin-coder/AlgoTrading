@@ -206,6 +206,58 @@ def volume_profile(f: pd.DataFrame, bins: int = 24, value_area: float = 0.7) -> 
     return pd.DataFrame.from_dict(rows, orient="index", columns=["poc", "vah", "val"])
 
 
+def kalman_trend(close: pd.Series, process_var: float = 1e-3, measurement_var: float = 1e-1) -> Tuple[pd.Series, pd.Series]:
+    """1-D linear Kalman filter of the close (from algo_options_engine): smoothed price and its per-bar velocity.
+    Causal: bar i uses closes 0..i only."""
+    c = close.to_numpy(dtype=float)
+    n = len(c)
+    est, vel = np.full(n, np.nan), np.full(n, np.nan)
+    p, x = 1.0, np.nan
+    for i in range(n):
+        if not np.isfinite(c[i]):
+            continue
+        if not np.isfinite(x):
+            x = c[i]
+        p_pred = p + process_var
+        k = p_pred / (p_pred + measurement_var)
+        prev = x
+        x = x + k * (c[i] - x)
+        p = (1.0 - k) * p_pred
+        est[i], vel[i] = x, x - prev
+    return pd.Series(est, index=close.index), pd.Series(vel, index=close.index)
+
+
+def rolling_value_area(f: pd.DataFrame, window: int = 75, bins: int = 24, value_area: float = 0.7) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """POC / VAH / VAL of the previous `window` bars (volume-weighted typical price), known before each bar."""
+    n = len(f)
+    poc, vah, val = np.full(n, np.nan), np.full(n, np.nan), np.full(n, np.nan)
+    hi, lo = f["high"].to_numpy(float), f["low"].to_numpy(float)
+    tp = ((f["high"] + f["low"] + f["close"]) / 3.0).to_numpy(float)
+    vol = f["volume"].to_numpy(float) if "volume" in f else np.zeros(n)
+    for i in range(window, n):
+        s = slice(i - window, i)
+        v = vol[s]
+        top, bot = np.nanmax(hi[s]), np.nanmin(lo[s])
+        if not np.isfinite(v).any() or np.nansum(v) <= 0 or top <= bot:
+            continue
+        edges = np.linspace(bot, top, bins + 1)
+        hist, _ = np.histogram(tp[s], bins=edges, weights=np.nan_to_num(v))
+        k = int(np.argmax(hist))
+        target, cum, left, right = hist.sum() * value_area, hist[k], k, k
+        while cum < target and (left > 0 or right < bins - 1):
+            lv = hist[left - 1] if left > 0 else -1.0
+            rv = hist[right + 1] if right < bins - 1 else -1.0
+            if rv >= lv:
+                right += 1
+                cum += rv
+            else:
+                left -= 1
+                cum += lv
+        poc[i], vah[i], val[i] = (edges[k] + edges[k + 1]) / 2, edges[right + 1], edges[left]
+    idx = f.index
+    return pd.Series(poc, index=idx), pd.Series(vah, index=idx), pd.Series(val, index=idx)
+
+
 def tf_state(m1: pd.DataFrame, tf: int, closes: pd.DatetimeIndex, fast: int = 20, slow: int = 50) -> pd.Series:
     """Trend of timeframe `tf` as known at each time in `closes` (bar CLOSE times of the base frame):
     +1 close > EMA(fast) > EMA(slow), -1 the mirror, 0 mixed, NaN while warming up. Only bars of `tf` that

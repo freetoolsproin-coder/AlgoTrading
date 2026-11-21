@@ -4,7 +4,7 @@ F&O multi-strategy engine (paper trading only).
     python -m src.fno                     live Upstox data (after python -m src.broker.auth), dashboard http://127.0.0.1:8520
     python -m src.fno --mock              synthetic market, no token; everything is labelled MOCK
     python -m src.fno --once              one cycle printed in the terminal, no web server
-    python -m src.fno strategies          the 43 strategies with their CE / PE / exit rules and settings
+    python -m src.fno strategies          the 56 strategies with their CE / PE / exit rules and settings
     python -m src.fno backtest --help     per-strategy backtest, out-of-sample split, walk-forward
 
 Settings: config/fno.ini. This engine never places orders.

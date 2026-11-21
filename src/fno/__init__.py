@@ -1,5 +1,5 @@
 """
-Multi-strategy F&O engine: NIFTY, BANKNIFTY, FINNIFTY, SENSEX and every NSE stock that currently has options.
+Multi-strategy F&O engine: NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY, SENSEX and every NSE stock that currently has options.
 
     python -m src.fno                 live Upstox data, paper trading, dashboard on http://127.0.0.1:8520
     python -m src.fno --mock          synthetic market (labelled MOCK), no token

@@ -58,7 +58,7 @@ from src.utils import market_calendar
 
 logger = logging.getLogger("scanner.fno.backtest")
 TZ = "Asia/Kolkata"
-INDEX_SYMBOLS = ("NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX")
+INDEX_SYMBOLS = ("NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX")
 
 
 def out_dir() -> Path:

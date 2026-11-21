@@ -46,17 +46,14 @@ def _n(v) -> str:
 
 
 def events(stocks: Optional[dict]) -> List[Tuple[str, str]]:
-    """[(key, text)] for everything in the stock state that counts as a trigger. Keys are stable per event."""
+    """[(key, text)] for every pre-breakout trade / trigger in the stock state. Stock-option plans (the stock
+    service's own `book`) are no longer shown on the desk, so they raise no popup either. Keys are stable per event."""
     out: List[Tuple[str, str]] = []
     if not stocks:
         return out
-    for t in (stocks.get("book") or {}).get("trades") or []:
-        out.append((f"opt:{t.get('contract')}:{t.get('opened')}",
-                    f"OPTION TRADE OPENED  {t.get('kind', '')} {t.get('contract', '')}\n"
-                    f"Buy {_n(t.get('entry'))} · SL {_n(t.get('stop'))} · T1 {_n(t.get('t1'))} · T2 {_n(t.get('t2'))}"))
     b = stocks.get("breakout") or {}
     for t in (b.get("book") or {}).get("trades") or []:
-        line = (f"BREAKOUT TRADE OPENED  {t.get('side', '')} {t.get('symbol', '')}  ({t.get('qty', '-')} sh)\n"
+        line = (f"BREAKOUT TRADE OPENED  {t.get('side', '')} {t.get('symbol', '')}\n"
                 f"Entry {_n(t.get('entry_spot'))} · SL {_n(t.get('stop'))} · T1 {_n(t.get('t1'))} · T2 {_n(t.get('t2'))}")
         if t.get("contract"):
             line += f"\nOption: {t['contract']}"
